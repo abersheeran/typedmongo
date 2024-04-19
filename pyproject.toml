@@ -1,0 +1,22 @@
+[project]
+name = "typedmongo"
+version = "0.1.0"
+description = "A modern Python MongoDB ODM"
+authors = [
+    {name = "abersheeran", email = "me@abersheeran.com"},
+]
+dependencies = [
+    "pymongo>=4.6.3",
+    "motor>=3.4.0",
+    "marshmallow>=3.21.1",
+]
+requires-python = ">=3.12"
+readme = "README.md"
+license = {text = "Apache2.0"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+package-type = "library"
