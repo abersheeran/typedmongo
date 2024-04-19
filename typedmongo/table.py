@@ -1,8 +1,17 @@
-from copy import deepcopy
+import inspect
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Mapping,
+    Self,
+    Sequence,
+    get_args,
+    get_origin,
+)
 
-from marshmallow.schema import Schema, SchemaMeta
+from marshmallow import Schema
 
 from .exceptions import TableDefineError
 from .fields import Field, ObjectIdField
@@ -19,13 +28,17 @@ def snake_case(name: str) -> str:
     )
 
 
-class TableMetaClass(SchemaMeta):
+class TableMetaClass(type):
     if TYPE_CHECKING:
         __abstract__: bool
         __client__: Any
         __collection__: Any
         __fields__: dict[str, Field]
+        __fields_loaded__: bool
         __indexes__: Sequence[Index]
+
+        __create_schema__: Callable[[str, dict[str, Field]], Schema]
+        __schema__: Schema
 
     def __new__(cls, name, bases, namespace):
         if "_" in name:  # check error name. e.g. Status_Info
@@ -43,35 +56,53 @@ class TableMetaClass(SchemaMeta):
 
         namespace.setdefault("__indexes__", ())
 
-        def merge_dict(*d):
-            new = dict()
-            for _ in reversed(d):
-                new.update(_)
-            return new
-
         # merge bases' `__fields__` to `__fields__`
+        fields = {
+            name: value for name, value in namespace.items() if isinstance(value, Field)
+        }
+        namespace["__fields_loaded__"] = not not fields
         namespace["__fields__"] = reduce(
             lambda _initial, _item: {**_item, **_initial},
             reversed([getattr(base, "__fields__", {}) for base in bases]),
-            {
-                name: value
-                for name, value in namespace.items()
-                if isinstance(value, Field)
-            },
+            fields,
+        )
+
+        if "__create_schema__" not in namespace:
+            for base in bases:
+                create_schema = base.__create_schema__
+            namespace["__create_schema__"] = create_schema
+        namespace["__schema__"] = namespace["__create_schema__"](
+            name, namespace["__fields__"]
         )
 
         return super().__new__(cls, name, bases, namespace)
 
-    def __init__(self, cls_name, bases, namespace) -> None:
-        self.__alias__ = ""
-        for name, attr in namespace.items():
-            if callable(getattr(attr, "__set_name__", None)):
-                attr.__set_name__(self, name)
-        super().__init__(cls_name, bases, namespace)
+    def __lazy_init_fields__(cls) -> None:
+        if cls.__fields_loaded__:
+            return
 
-    def __call__(self, **kwargs):
+        cls.__fields__ = fields = {
+            **{
+                name: value()
+                for name, value in inspect.get_annotations(cls, eval_str=True).items()
+                if isinstance(value, type) and issubclass(value, Field)
+            },
+            **{
+                name: origin_class(*get_args(value))
+                for name, value in inspect.get_annotations(cls, eval_str=True).items()
+                if (origin_class := get_origin(value))
+                and isinstance(origin_class, type)
+                and issubclass(origin_class, Field)
+            },
+        }
+        for name, field in fields.items():
+            setattr(cls, name, field)
+            field.__set_name__(cls, name)
+
+        cls.__schema__ = cls.__create_schema__(cls.__name__, fields)
+
+    def __call__(cls, **kwargs: Any):
         instance = super().__call__()
-        instance._from_db = False
 
         # Store updated fields in the instance
         instance.update_fields = []
@@ -79,7 +110,7 @@ class TableMetaClass(SchemaMeta):
         if instance.__abstract__:
             raise RuntimeError(
                 "The class {} cannot be instantiated, because it's __abstract__ is True.".format(
-                    self.__name__
+                    cls.__name__
                 )
             )
 
@@ -91,30 +122,46 @@ class TableMetaClass(SchemaMeta):
 
         return instance
 
-    def __setattr__(self, name, value):
+    def __setattr__(cls, name, value):
         if name == "__abstract__":
             raise AttributeError(
                 "Can't modify the `__abstract__` attribute dynamically."
             )
         return super().__setattr__(name, value)
 
-    def _create_from_db(self, **kwargs):
-        mapping = {field.field_name: name for name, field in self.__fields__.items()}
-        model = self(**{mapping[k]: v for k, v in kwargs.items()})
-        model._from_db = True
-        return model
 
-
-class Table(Schema, metaclass=TableMetaClass):
+class Table(metaclass=TableMetaClass):
     __abstract__: bool = True
 
     if TYPE_CHECKING:
-        _from_db: bool
-
         update_fields: list[str]
 
     _id = ObjectIdField()
 
-    def dict(self, copy: bool = False) -> dict[str, Any]:
-        dictionary = {k: v for k, v in self.__dict__.items() if k in self.__fields__}
-        return deepcopy(dictionary) if copy else dictionary
+    def __repr__(self) -> str:
+        return "{class_name}({fields})".format(
+            class_name=self.__class__.__name__,
+            fields=", ".join(
+                f"{name}={self.__dict__[name]}"
+                for name, _ in self.__fields__.items()
+                if name in self.__dict__
+            ),
+        )
+
+    @staticmethod
+    def __create_schema__(name: str, fields: dict[str, Field]) -> Schema:
+        schema_class = Schema.from_dict(
+            {name: field.marshamallow for name, field in fields.items()}, name=name
+        )
+        return schema_class(unknown="exclude")
+
+    @classmethod
+    def load(
+        cls: type[Self], data: Mapping[str, Any], *, partial: bool = False
+    ) -> Self:
+        validated = cls.__schema__.load(data=data, partial=partial)
+        loaded = {
+            key: getattr(cls.__fields__[key], "load")(value, partial=partial)
+            for key, value in validated.items()  # type: ignore
+        }
+        return cls(**loaded)

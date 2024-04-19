@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal, Protocol
 
-if TYPE_CHECKING:
-    from .fields import Field
+
+class HasFieldName(Protocol):
+    field_name: str
 
 
 class Expression:
@@ -54,38 +55,38 @@ class Expression:
         return CombineExpression("OR", other, self)
 
 
-class CompareMixin:
-    def __lt__(self, other) -> CompareExpression:
-        """
-        self < other
-        """
-        return CompareExpression(self, "<", other)
-
-    def __le__(self, other) -> CompareExpression:
-        """
-        self <= other
-        """
-        return CompareExpression(self, "<=", other)
-
-    def __eq__(self, other) -> CompareExpression:
+class CompareMixin(HasFieldName):
+    def __eq__(self, other: Any) -> CompareExpression:
         """
         self == other
         """
         return CompareExpression(self, "==", other)
 
-    def __ne__(self, other) -> CompareExpression:
+    def __ne__(self, other: Any) -> CompareExpression:
         """
         self != other
         """
         return CompareExpression(self, "!=", other)
 
-    def __gt__(self, other) -> CompareExpression:
+    def __lt__(self, other: Any) -> CompareExpression:
+        """
+        self < other
+        """
+        return CompareExpression(self, "<", other)
+
+    def __le__(self, other: Any) -> CompareExpression:
+        """
+        self <= other
+        """
+        return CompareExpression(self, "<=", other)
+
+    def __gt__(self, other: Any) -> CompareExpression:
         """
         self > other
         """
         return CompareExpression(self, ">", other)
 
-    def __ge__(self, other) -> CompareExpression:
+    def __ge__(self, other: Any) -> CompareExpression:
         """
         self >= other
         """
@@ -93,65 +94,81 @@ class CompareMixin:
 
 
 class ArithmeticMixin:
-    def __add__(self, other) -> ArithmeticExpression:
+    def __add__(self, other: Any) -> ArithmeticExpression:
         """
         self + other
         """
         return ArithmeticExpression(self, "+", other)
 
-    def __radd__(self, other) -> ArithmeticExpression:
+    def __radd__(self, other: Any) -> ArithmeticExpression:
         """
         other + self
         """
         return ArithmeticExpression(other, "+", self)
 
-    def __sub__(self, other) -> ArithmeticExpression:
+    def __sub__(self, other: Any) -> ArithmeticExpression:
         """
         self - other
         """
         return ArithmeticExpression(self, "-", other)
 
-    def __rsub__(self, other) -> ArithmeticExpression:
+    def __rsub__(self, other: Any) -> ArithmeticExpression:
         """
         other - self
         """
         return ArithmeticExpression(other, "-", self)
 
-    def __mul__(self, other) -> ArithmeticExpression:
+    def __mul__(self, other: Any) -> ArithmeticExpression:
         """
         self * other
         """
         return ArithmeticExpression(self, "*", other)
 
-    def __rmul__(self, other) -> ArithmeticExpression:
+    def __rmul__(self, other: Any) -> ArithmeticExpression:
         """
         other * self
         """
         return ArithmeticExpression(other, "*", self)
 
-    def __truediv__(self, other) -> ArithmeticExpression:
+    def __truediv__(self, other: Any) -> ArithmeticExpression:
         """
         self / other
         """
         return ArithmeticExpression(self, "/", other)
 
-    def __rtruediv__(self, other) -> ArithmeticExpression:
+    def __rtruediv__(self, other: Any) -> ArithmeticExpression:
         """
         other / self
         """
         return ArithmeticExpression(other, "/", self)
 
-    def __mod__(self, other) -> ArithmeticExpression:
+    def __mod__(self, other: Any) -> ArithmeticExpression:
         """
         self % other
         """
         return ArithmeticExpression(self, "%", other)
 
-    def __rmod__(self, other) -> ArithmeticExpression:
+    def __rmod__(self, other: Any) -> ArithmeticExpression:
         """
         other % self
         """
         return ArithmeticExpression(other, "%", self)
+
+
+@dataclasses.dataclass(repr=False)
+class BetterReprMixin:
+    def __repr__(self) -> str:
+        names = self.__dataclass_fields__.keys()
+
+        attrs_str = []
+        for name in names:
+            v = getattr(self, name)
+            if hasattr(v, "field_name"):
+                repr_str = getattr(v, "field_name")
+            else:
+                repr_str = repr(v)
+            attrs_str.append(f"{name}={repr_str}")
+        return f"{self.__class__.__name__}({', '.join(attrs_str)})"
 
 
 @dataclasses.dataclass
@@ -159,28 +176,28 @@ class NotExpression(Expression):
     expr: Expression
 
 
-@dataclasses.dataclass
-class CombineExpression(Expression):
+@dataclasses.dataclass(repr=False)
+class CombineExpression(Expression, BetterReprMixin):
     operator: Literal["AND", "OR"]
     left: Expression
     right: Expression
 
 
-@dataclasses.dataclass
-class CompareExpression(Expression):
-    field: Field
+@dataclasses.dataclass(repr=False)
+class CompareExpression(Expression, BetterReprMixin):
+    field: HasFieldName
     operator: Literal[">=", "<=", ">", "<", "==", "!="]
     arg: Any
 
 
-@dataclasses.dataclass
-class ArithmeticExpression(Expression):
+@dataclasses.dataclass(repr=False)
+class ArithmeticExpression(Expression, BetterReprMixin):
     left: Any
     operator: Literal["-", "+", "*", "/", "%"]
     right: Any
 
 
-class OrderByMixin:
+class OrderByMixin(HasFieldName):
     def __neg__(self) -> OrderBy:
         """
         -self
@@ -194,7 +211,7 @@ class OrderByMixin:
         return OrderBy(self, "ASC")
 
 
-@dataclasses.dataclass
-class OrderBy:
-    field: Field
+@dataclasses.dataclass(repr=False)
+class OrderBy(BetterReprMixin):
+    field: HasFieldName
     order: Literal["DESC", "ASC"]
