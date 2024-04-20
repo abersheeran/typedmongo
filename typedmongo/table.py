@@ -81,7 +81,7 @@ class TableMetaClass(type):
         if cls.__fields_loaded__:
             return
 
-        cls.__fields__ = fields = {
+        fields = {
             **{
                 name: value()
                 for name, value in inspect.get_annotations(cls, eval_str=True).items()
@@ -99,6 +99,7 @@ class TableMetaClass(type):
             setattr(cls, name, field)
             field.__set_name__(cls, name)
 
+        cls.__fields__ = {**cls.__fields__, **fields}
         cls.__schema__ = cls.__create_schema__(cls.__name__, fields)
 
     def __call__(cls, **kwargs: Any):

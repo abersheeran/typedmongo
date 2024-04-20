@@ -182,18 +182,26 @@ class EmbeddedField[T: Table](Field[T]):
         self.load = load
 
 
-@dataclasses.dataclass
-class ListFieldNameProxy[T: type[Table] | Any]:
+@dataclasses.dataclass(eq=False)
+class ListFieldNameProxy[T: type[Table] | Any](
+    OrderByMixin, CompareMixin, ArithmeticMixin
+):
     number: int | None
     prefix: HasFieldName
     t: T
+
+    @property
+    def field_name(self) -> str:
+        if self.number is None:
+            return self.prefix.field_name
+        return f"{self.prefix.field_name}.{self.number}"
 
     def __get__(self, instance, owner) -> T: ...
 
     def __getattr__(self, name: str) -> FieldNameProxyString:
         try:
             return FieldNameProxyString(
-                f"{self.prefix.field_name}.{self.t.__fields__[name].field_name}"
+                f"{self.field_name}.{self.t.__fields__[name].field_name}"
             )
         except KeyError:
             message = "{0} has no attribute '{1}'".format(self.t, name)
@@ -211,11 +219,7 @@ class ListField[T](Field[list[T]]):
     type_or_schema: type[T]
 
     def __getitem__(self, index: int) -> type[T]:
-        return ListFieldNameProxy(
-            index,
-            FieldNameProxyString(f"{self.field_name}.{index}"),
-            self.type_or_schema,
-        )  # type: ignore
+        return ListFieldNameProxy(index, self, self.type_or_schema)  # type: ignore
 
     def __post_init__(self):
         self._ = ListFieldNameProxy(None, self, self.type_or_schema)
