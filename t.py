@@ -1,22 +1,28 @@
 from __future__ import annotations
 
-from typedmongo.table import Table
-from typedmongo import fields
+import motor.motor_asyncio as motor
+
+import typedmongo
 
 
-class Wallet(Table):
-    balance = fields.FloatField()
+class Wallet(typedmongo.Table):
+    balance = typedmongo.FloatField()
 
 
-class User(Table):
-    name: fields.StringField
-    age: fields.IntegerField
-    tags: fields.ListField[str]
-    wallet: fields.EmbeddedField[Wallet]
-    children: fields.ListField[User]
+class User(typedmongo.Table):
+    name: typedmongo.StringField
+    age: typedmongo.IntegerField
+    tags: typedmongo.ListField[str]
+    wallet: typedmongo.EmbeddedField[Wallet]
+    children: typedmongo.ListField[User]
 
 
-User.__lazy_init_fields__()
+typedmongo.initial_collections(
+    motor.AsyncIOMotorClient().typedmongo,
+    User,
+    Wallet,
+)
+
 
 print(User.name == "Aber")
 print(User.age >= 18)
@@ -42,3 +48,5 @@ user.age
 user.wallet
 user.children
 print(user)
+
+User.objects

@@ -1,3 +1,4 @@
+import dataclasses
 import inspect
 from functools import reduce
 from typing import (
@@ -5,6 +6,7 @@ from typing import (
     Any,
     Callable,
     Mapping,
+    Optional,
     Self,
     Sequence,
     get_args,
@@ -12,10 +14,11 @@ from typing import (
 )
 
 from marshmallow import Schema
+from pymongo import IndexModel
 
+from .client import Manager
 from .exceptions import TableDefineError
 from .fields import Field, ObjectIdField
-from .indexes import Index
 
 
 def snake_case(name: str) -> str:
@@ -28,15 +31,44 @@ def snake_case(name: str) -> str:
     )
 
 
+@dataclasses.dataclass
+class Index:
+    keys: Field | Sequence[tuple[Field, int]] | Mapping[Field, Any]
+
+    name: Optional[str] = None
+    unique: bool = False
+    background: bool = False
+    sparse: bool = False
+    expireAfterSeconds: Optional[int] = None
+    partialFilterExpression: Optional[dict[str, Any]] = None
+
+    def to_index_model(self) -> IndexModel:
+        if isinstance(self.keys, Field):
+            keys = self.keys.field_name
+        elif isinstance(self.keys, Mapping):
+            keys = {field.field_name: value for field, value in self.keys.items()}
+        else:
+            keys = [(field.field_name, value) for field, value in self.keys]
+
+        return IndexModel(
+            keys=keys,
+            name=self.name,
+            unique=self.unique,
+            background=self.background,
+            sparse=self.sparse,
+            expireAfterSeconds=self.expireAfterSeconds,
+            partialFilterExpression=self.partialFilterExpression,
+        )
+
+
 class TableMetaClass(type):
     if TYPE_CHECKING:
         __abstract__: bool
-        __client__: Any
+        __database__: Any
+        __collection_name__: str
         __collection__: Any
         __fields__: dict[str, Field]
         __fields_loaded__: bool
-        __indexes__: Sequence[Index]
-
         __create_schema__: Callable[[str, dict[str, Field]], Schema]
         __schema__: Schema
 
@@ -51,10 +83,8 @@ class TableMetaClass(type):
                     name=name
                 )
             )
-
+        namespace.setdefault("__collection_name__", snake_case(name))
         namespace.setdefault("__abstract__", False)
-
-        namespace.setdefault("__indexes__", ())
 
         # merge bases' `__fields__` to `__fields__`
         fields = {
@@ -98,15 +128,12 @@ class TableMetaClass(type):
         for name, field in fields.items():
             setattr(cls, name, field)
             field.__set_name__(cls, name)
-
+        cls.__fields_loaded__ = True
         cls.__fields__ = {**cls.__fields__, **fields}
         cls.__schema__ = cls.__create_schema__(cls.__name__, fields)
 
     def __call__(cls, **kwargs: Any):
         instance = super().__call__()
-
-        # Store updated fields in the instance
-        instance.update_fields = []
 
         if instance.__abstract__:
             raise RuntimeError(
@@ -117,9 +144,6 @@ class TableMetaClass(type):
 
         for name, value in kwargs.items():
             setattr(instance, name, value)
-
-        # Clear initial fields
-        instance.update_fields.clear()
 
         return instance
 
@@ -134,10 +158,9 @@ class TableMetaClass(type):
 class Table(metaclass=TableMetaClass):
     __abstract__: bool = True
 
-    if TYPE_CHECKING:
-        update_fields: list[str]
-
     _id = ObjectIdField()
+
+    objects = Manager()
 
     def __repr__(self) -> str:
         return "{class_name}({fields})".format(
@@ -166,3 +189,10 @@ class Table(metaclass=TableMetaClass):
             for key, value in validated.items()  # type: ignore
         }
         return cls(**loaded)
+
+    def to_mongo(self) -> dict[str, Any]:
+        return {
+            key: getattr(self.__fields__[key], "to_mongo")(value)
+            for key, value in self.__dict__.items()
+            if key in self.__fields__
+        }

@@ -17,10 +17,17 @@ class Expression:
         """
         ~self
         """
-        if isinstance(self, NotExpression):
-            return self.expr
-        else:
-            return NotExpression(self)
+        match self:
+            case NotExpression(expr):
+                return expr
+            case CombineExpression("AND", left, right):
+                return CombineExpression("OR", ~left, ~right)
+            case CombineExpression("OR", left, right):
+                return CombineExpression("AND", ~left, ~right)
+            case CompareExpression():
+                return NotExpression(self)
+            case _:
+                raise NotImplementedError
 
     def __and__(self, other: Expression) -> CombineExpression:
         """
@@ -93,68 +100,6 @@ class CompareMixin(HasFieldName):
         return CompareExpression(self, ">=", other)
 
 
-class ArithmeticMixin:
-    def __add__(self, other: Any) -> ArithmeticExpression:
-        """
-        self + other
-        """
-        return ArithmeticExpression(self, "+", other)
-
-    def __radd__(self, other: Any) -> ArithmeticExpression:
-        """
-        other + self
-        """
-        return ArithmeticExpression(other, "+", self)
-
-    def __sub__(self, other: Any) -> ArithmeticExpression:
-        """
-        self - other
-        """
-        return ArithmeticExpression(self, "-", other)
-
-    def __rsub__(self, other: Any) -> ArithmeticExpression:
-        """
-        other - self
-        """
-        return ArithmeticExpression(other, "-", self)
-
-    def __mul__(self, other: Any) -> ArithmeticExpression:
-        """
-        self * other
-        """
-        return ArithmeticExpression(self, "*", other)
-
-    def __rmul__(self, other: Any) -> ArithmeticExpression:
-        """
-        other * self
-        """
-        return ArithmeticExpression(other, "*", self)
-
-    def __truediv__(self, other: Any) -> ArithmeticExpression:
-        """
-        self / other
-        """
-        return ArithmeticExpression(self, "/", other)
-
-    def __rtruediv__(self, other: Any) -> ArithmeticExpression:
-        """
-        other / self
-        """
-        return ArithmeticExpression(other, "/", self)
-
-    def __mod__(self, other: Any) -> ArithmeticExpression:
-        """
-        self % other
-        """
-        return ArithmeticExpression(self, "%", other)
-
-    def __rmod__(self, other: Any) -> ArithmeticExpression:
-        """
-        other % self
-        """
-        return ArithmeticExpression(other, "%", self)
-
-
 @dataclasses.dataclass(repr=False)
 class BetterReprMixin:
     def __repr__(self) -> str:
@@ -172,12 +117,7 @@ class BetterReprMixin:
 
 
 @dataclasses.dataclass
-class NotExpression(Expression):
-    expr: Expression
-
-
-@dataclasses.dataclass(repr=False)
-class CombineExpression(Expression, BetterReprMixin):
+class CombineExpression(Expression):
     operator: Literal["AND", "OR"]
     left: Expression
     right: Expression
@@ -190,11 +130,37 @@ class CompareExpression(Expression, BetterReprMixin):
     arg: Any
 
 
-@dataclasses.dataclass(repr=False)
-class ArithmeticExpression(Expression, BetterReprMixin):
-    left: Any
-    operator: Literal["-", "+", "*", "/", "%"]
-    right: Any
+@dataclasses.dataclass
+class NotExpression(Expression):
+    expr: CompareExpression
+
+
+def compile_expression(expr: Expression) -> dict[str, Any]:
+    match expr:
+        case CompareExpression(field, "==", arg):
+            return {field.field_name: arg}
+        case CompareExpression(field, "!=", arg):
+            return {field.field_name: {"$ne": arg}}
+        case CompareExpression(field, ">", arg):
+            return {field.field_name: {"$gt": arg}}
+        case CompareExpression(field, ">=", arg):
+            return {field.field_name: {"$gte": arg}}
+        case CompareExpression(field, "<", arg):
+            return {field.field_name: {"$lt": arg}}
+        case CompareExpression(field, "<=", arg):
+            return {field.field_name: {"$lte": arg}}
+        case CombineExpression("AND", left, right):
+            return {"$and": [compile_expression(left), compile_expression(right)]}
+        case CombineExpression("OR", left, right):
+            return {"$or": [compile_expression(left), compile_expression(right)]}
+        case NotExpression(inner):
+            return {
+                inner.field.field_name: {
+                    "$not": compile_expression(inner).pop(inner.field.field_name)
+                }
+            }
+        case _:
+            raise NotImplementedError(f"Unsupported expression: {expr}")
 
 
 class OrderByMixin(HasFieldName):
@@ -202,16 +168,16 @@ class OrderByMixin(HasFieldName):
         """
         -self
         """
-        return OrderBy(self, "DESC")
+        return OrderBy(self, -1)
 
     def __pos__(self) -> OrderBy:
         """
         +self
         """
-        return OrderBy(self, "ASC")
+        return OrderBy(self, +1)
 
 
 @dataclasses.dataclass(repr=False)
 class OrderBy(BetterReprMixin):
     field: HasFieldName
-    order: Literal["DESC", "ASC"]
+    order: Literal[-1, +1]

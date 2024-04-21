@@ -2,20 +2,20 @@ from __future__ import annotations
 
 import dataclasses
 from datetime import datetime
-from typing import Any, Self, get_args, get_origin, overload, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Self, get_args, get_origin, overload
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from marshmallow import fields, ValidationError
+from marshmallow import ValidationError, fields
 
-from .expressions import OrderByMixin, CompareMixin, ArithmeticMixin, HasFieldName
+from .expressions import CompareMixin, HasFieldName, OrderByMixin
 
 if TYPE_CHECKING:
     from .table import Table
 
 
 @dataclasses.dataclass(eq=False)
-class Field[FieldType](OrderByMixin, CompareMixin, ArithmeticMixin):
+class Field[FieldType](OrderByMixin, CompareMixin):
     """
     Field
     """
@@ -49,8 +49,6 @@ class Field[FieldType](OrderByMixin, CompareMixin, ArithmeticMixin):
             raise AttributeError(message) from None
 
     def __set__(self, instance: Table, value: Any) -> None:
-        if value != instance.__dict__.get(self._name):
-            instance.update_fields.append(self._name)
         instance.__dict__[self._name] = value
 
     def __delete__(self, instance: Table) -> None:
@@ -72,6 +70,9 @@ class Field[FieldType](OrderByMixin, CompareMixin, ArithmeticMixin):
         raise RuntimeError(f"Cannot get field type for {cls}")
 
     def load(self, value: Any, *, partial: bool = False) -> FieldType:
+        return value
+
+    def to_mongo(self, value: FieldType) -> Any:
         return value
 
 
@@ -158,7 +159,7 @@ class FieldNameProxy[T: type[Table]]:
 
 
 @dataclasses.dataclass(eq=False)
-class FieldNameProxyString(OrderByMixin, CompareMixin, ArithmeticMixin):
+class FieldNameProxyString(OrderByMixin, CompareMixin):
     field_name: str
 
 
@@ -183,9 +184,7 @@ class EmbeddedField[T: Table](Field[T]):
 
 
 @dataclasses.dataclass(eq=False)
-class ListFieldNameProxy[T: type[Table] | Any](
-    OrderByMixin, CompareMixin, ArithmeticMixin
-):
+class ListFieldNameProxy[T: type[Table] | Any](OrderByMixin, CompareMixin):
     number: int | None
     prefix: HasFieldName
     t: T
