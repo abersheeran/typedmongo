@@ -22,7 +22,6 @@ from typedmongo.expressions import CompareMixin, HasFieldName, OrderByMixin
 if TYPE_CHECKING:
     from .table import Table
 
-
 A = TypeVar("A")
 TypeTable = TypeVar("TypeTable", bound=type["Table"])
 T = TypeVar("T", bound="Table")

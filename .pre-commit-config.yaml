@@ -1,0 +1,10 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: local
+    hooks:
+      - id: sync-code
+        name: Check generated sync code from asyncio code
+        entry: pdm run sync --check
+        language: python
+        pass_filenames: false

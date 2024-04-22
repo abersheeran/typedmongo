@@ -4,7 +4,8 @@ Synchronize the asyncio module to the root module.
 import pathlib
 
 
-def main():
+def main(just_check: bool = False):
+    exit_code = 0
     sync_dir = pathlib.Path(__file__).absolute().parent
     asyncio_dir = pathlib.Path(__file__).absolute().parent / "asyncio"
     for path in asyncio_dir.glob("*.py"):
@@ -25,8 +26,16 @@ def main():
             .replace("async with ", "with ")
             .replace("AsyncIterable", "Iterable")
         )
-        new_file_path.write_text(content)
+        if just_check:
+            if content != new_file_path.read_text():
+                print(f"File {new_file_path} is not synchronized.")
+                exit_code = 1
+        else:
+            new_file_path.write_text(content)
+    return exit_code
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    sys.exit(main("--check" in " ".join(sys.argv[1:])))

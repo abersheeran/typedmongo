@@ -22,7 +22,7 @@ from typedmongo.expressions import CompareMixin, HasFieldName, OrderByMixin
 if TYPE_CHECKING:
     from .table import Table
 
-
+A = TypeVar("A")
 TypeTable = TypeVar("TypeTable", bound=type["Table"])
 T = TypeVar("T", bound="Table")
 TypeTableOrAny = TypeVar("TypeTableOrAny", bound=type["Table"] | Any)
@@ -227,16 +227,16 @@ class ListFieldNameProxy(Generic[TypeTableOrAny], OrderByMixin, CompareMixin):
 
 
 @dataclasses.dataclass(eq=False)
-class ListField(Generic[T], Field[list[T]]):
+class ListField(Generic[A], Field[list[A]]):
     """
     List field
     """
 
-    _: ListFieldNameProxy[type[T]] = dataclasses.field(init=False)
+    _: ListFieldNameProxy[type[A]] = dataclasses.field(init=False)
 
-    type_or_schema: type[T]
+    type_or_schema: type[A]
 
-    def __getitem__(self, index: int) -> type[T]:
+    def __getitem__(self, index: int) -> type[A]:
         return ListFieldNameProxy(index, self, self.type_or_schema)  # type: ignore
 
     def __post_init__(self):
@@ -249,7 +249,7 @@ class ListField(Generic[T], Field[list[T]]):
                 fields.Nested(self.type_or_schema.__schema__)
             )
 
-            def load(value: Any, *, partial: bool = False) -> list[T]:
+            def load(value: Any, *, partial: bool = False) -> list[A]:
                 return [
                     self.type_or_schema.load(item, partial=partial)  # type: ignore
                     for item in value
