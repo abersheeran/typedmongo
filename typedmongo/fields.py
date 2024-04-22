@@ -227,7 +227,7 @@ class ListFieldNameProxy(Generic[TypeTableOrAny], OrderByMixin, CompareMixin):
 
 
 @dataclasses.dataclass(eq=False)
-class ListField[T](Field[list[T]]):
+class ListField(Generic[T], Field[list[T]]):
     """
     List field
     """
