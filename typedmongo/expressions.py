@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
+if TYPE_CHECKING:
+    # Solve TypeError: Cannot create a consistent method resolution
+    class HasFieldName(Protocol):
+        field_name: str
+else:
 
-class HasFieldName(Protocol):
-    field_name: str
+    class HasFieldName:
+        field_name: str
 
 
 class Expression:

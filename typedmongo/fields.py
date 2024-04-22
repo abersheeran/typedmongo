@@ -2,11 +2,20 @@ from __future__ import annotations
 
 import dataclasses
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Self, get_args, get_origin, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    TypeVar,
+    get_args,
+    get_origin,
+    overload,
+)
 
 from bson import ObjectId
 from bson.errors import InvalidId
 from marshmallow import ValidationError, fields
+from typing_extensions import Self
 
 from typedmongo.expressions import CompareMixin, HasFieldName, OrderByMixin
 
@@ -14,8 +23,15 @@ if TYPE_CHECKING:
     from .table import Table
 
 
+A = TypeVar("A")
+TypeTable = TypeVar("TypeTable", bound=type["Table"])
+T = TypeVar("T", bound="Table")
+TypeTableOrAny = TypeVar("TypeTableOrAny", bound=type["Table"] | Any)
+FieldType = TypeVar("FieldType")
+
+
 @dataclasses.dataclass(eq=False)
-class Field[FieldType](OrderByMixin, CompareMixin):
+class Field(Generic[FieldType], OrderByMixin, CompareMixin):
     """
     Field
     """
@@ -144,11 +160,11 @@ class DateTimeField(Field[datetime]):
 
 
 @dataclasses.dataclass
-class FieldNameProxy[T: type[Table]]:
+class FieldNameProxy(Generic[TypeTable]):
     prefix: HasFieldName
-    t: T
+    t: TypeTable
 
-    def __get__(self, instance, owner) -> T:
+    def __get__(self, instance, owner) -> TypeTable:
         ...
 
     def __getattr__(self, name: str) -> FieldNameProxyString:
@@ -167,7 +183,7 @@ class FieldNameProxyString(OrderByMixin, CompareMixin):
 
 
 @dataclasses.dataclass(eq=False)
-class EmbeddedField[T: Table](Field[T]):
+class EmbeddedField(Generic[T], Field[T]):
     """
     Embedded field
     """
@@ -187,10 +203,10 @@ class EmbeddedField[T: Table](Field[T]):
 
 
 @dataclasses.dataclass(eq=False)
-class ListFieldNameProxy[T: type[Table] | Any](OrderByMixin, CompareMixin):
+class ListFieldNameProxy(Generic[TypeTableOrAny], OrderByMixin, CompareMixin):
     number: int | None
     prefix: HasFieldName
-    t: T
+    t: TypeTableOrAny
 
     @property
     def field_name(self) -> str:
@@ -198,7 +214,7 @@ class ListFieldNameProxy[T: type[Table] | Any](OrderByMixin, CompareMixin):
             return self.prefix.field_name
         return f"{self.prefix.field_name}.{self.number}"
 
-    def __get__(self, instance, owner) -> T:
+    def __get__(self, instance, owner) -> TypeTableOrAny:
         ...
 
     def __getattr__(self, name: str) -> FieldNameProxyString:
@@ -212,16 +228,16 @@ class ListFieldNameProxy[T: type[Table] | Any](OrderByMixin, CompareMixin):
 
 
 @dataclasses.dataclass(eq=False)
-class ListField[T](Field[list[T]]):
+class ListField(Generic[A], Field[list[A]]):
     """
     List field
     """
 
-    _: ListFieldNameProxy[type[T]] = dataclasses.field(init=False)
+    _: ListFieldNameProxy[type[A]] = dataclasses.field(init=False)
 
-    type_or_schema: type[T]
+    type_or_schema: type[A]
 
-    def __getitem__(self, index: int) -> type[T]:
+    def __getitem__(self, index: int) -> type[A]:
         return ListFieldNameProxy(index, self, self.type_or_schema)  # type: ignore
 
     def __post_init__(self):
@@ -234,7 +250,7 @@ class ListField[T](Field[list[T]]):
                 fields.Nested(self.type_or_schema.__schema__)
             )
 
-            def load(value: Any, *, partial: bool = False) -> list[T]:
+            def load(value: Any, *, partial: bool = False) -> list[A]:
                 return [
                     self.type_or_schema.load(item, partial=partial)  # type: ignore
                     for item in value
