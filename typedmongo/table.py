@@ -7,7 +7,6 @@ from typing import (
     Callable,
     Mapping,
     Optional,
-    Self,
     Sequence,
     get_args,
     get_origin,
@@ -15,6 +14,7 @@ from typing import (
 
 from marshmallow import Schema
 from pymongo import IndexModel
+from typing_extensions import Self
 
 from typedmongo.exceptions import TableDefineError
 

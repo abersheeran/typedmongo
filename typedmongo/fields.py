@@ -6,7 +6,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
-    Self,
     TypeVar,
     get_args,
     get_origin,
@@ -16,6 +15,7 @@ from typing import (
 from bson import ObjectId
 from bson.errors import InvalidId
 from marshmallow import ValidationError, fields
+from typing_extensions import Self
 
 from typedmongo.expressions import CompareMixin, HasFieldName, OrderByMixin
 
