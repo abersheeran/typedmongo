@@ -30,7 +30,7 @@ FieldType = TypeVar("FieldType")
 
 
 @dataclasses.dataclass(eq=False)
-class Field[FieldType](OrderByMixin, CompareMixin):
+class Field(Generic[FieldType], OrderByMixin, CompareMixin):
     """
     Field
     """

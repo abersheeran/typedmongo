@@ -31,6 +31,7 @@ test = [
 format = "ruff format ."
 lint = "ruff ."
 test = "pytest --cov=typedmongo tests/"
+sync = "python typedmongo/sync.py"
 
 [tool.ruff]
 extend-select = ["I"]
