@@ -5,9 +5,12 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Iterable,
+    Generic,
     Mapping,
     NoReturn,
     Optional,
+    TypeAlias,
+    TypeVar,
     overload,
 )
 
@@ -30,6 +33,9 @@ if TYPE_CHECKING:
 from typedmongo.expressions import Expression, OrderBy, compile_expression
 from typedmongo.fields import Field
 
+DocumentId: TypeAlias = Any
+T = TypeVar("T", bound="Table")
+
 
 def initial_collections(db: MongoDatabase, *tables: type[Table]) -> None:
     for table in tables:
@@ -40,11 +46,11 @@ def initial_collections(db: MongoDatabase, *tables: type[Table]) -> None:
 
 class Manager:
     @overload
-    def __get__[T: Table](self, instance: None, cls: type[T]) -> Objects[T]:
+    def __get__(self, instance: None, cls: type[T]) -> Objects[T]:
         ...
 
     @overload
-    def __get__[T: Table](self, instance: T, cls: type[T]) -> NoReturn:
+    def __get__(self, instance: T, cls: type[T]) -> NoReturn:
         ...
 
     def __get__(self, instance, cls):
@@ -54,7 +60,6 @@ class Manager:
         raise AttributeError("Manager is not accessible via instance")
 
 
-type DocumentId = Any
 translate_filter = (
     lambda f: {}
     if f is None
@@ -76,7 +81,7 @@ translate_sort = (
 )
 
 
-class Objects[T: Table]:
+class Objects(Generic[T]):
     def __init__(self, table: type[T]) -> None:
         self.table = table
 
@@ -297,7 +302,7 @@ class DeleteOne:
 
 
 @dataclasses.dataclass
-class InsertOne[T: Table]:
+class InsertOne(Generic[T]):
     document: T
 
     def to_mongo(self) -> MongoInsertOne:
@@ -305,7 +310,7 @@ class InsertOne[T: Table]:
 
 
 @dataclasses.dataclass
-class ReplaceOne[T: Table]:
+class ReplaceOne(Generic[T]):
     filter: Expression | dict[Any, Any]
     replacement: T
 
