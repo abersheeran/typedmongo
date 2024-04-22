@@ -4,7 +4,7 @@ import dataclasses
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterable,
+    AsyncIterable,
     Mapping,
     NoReturn,
     Optional,
@@ -19,8 +19,8 @@ from pymongo.operations import UpdateMany as MongoUpdateMany
 from pymongo.operations import UpdateOne as MongoUpdateOne
 
 if TYPE_CHECKING:
-    from pymongo.collection import Collection as MongoCollection
-    from pymongo.database import Database as MongoDatabase
+    from motor.motor_asyncio import AsyncIOMotorCollection as MongoCollection
+    from motor.motor_asyncio import AsyncIOMotorDatabase as MongoDatabase
     from pymongo.results import BulkWriteResult as MongoBlukWriteResult
     from pymongo.results import DeleteResult as MongoDeleteResult
     from pymongo.results import UpdateResult as MongoUpdateResult
@@ -80,25 +80,25 @@ class Objects[T: Table]:
     def __init__(self, table: type[T]) -> None:
         self.table = table
 
-    def insert_one(self, document: T) -> DocumentId:
+    async def insert_one(self, document: T) -> DocumentId:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
 
-        insert_result = collection.insert_one(document.to_mongo())
+        insert_result = await collection.insert_one(document.to_mongo())
         return insert_result.inserted_id
 
-    def insert_many(
+    async def insert_many(
         self, *documents: T, ordered: bool = True
     ) -> list[DocumentId]:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
 
-        insert_result = collection.insert_many(
+        insert_result = await collection.insert_many(
             [document.to_mongo() for document in documents], ordered=ordered
         )
         return insert_result.inserted_ids
 
-    def find(
+    async def find(
         self,
         filter: Optional[Expression | dict[Any, Any]] = None,
         projection: Optional[list[Field] | dict[Field, bool]] = None,
@@ -106,11 +106,11 @@ class Objects[T: Table]:
         limit: int = 0,
         sort: Optional[list[OrderBy]] = None,
         allow_disk_use: Optional[bool] = None,
-    ) -> Iterable[T]:
+    ) -> AsyncIterable[T]:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
 
-        for document in collection.find(
+        async for document in collection.find(
             filter=translate_filter(filter),
             projection=translate_projection(projection),
             skip=skip,
@@ -120,7 +120,7 @@ class Objects[T: Table]:
         ):
             yield self.table.load(document, partial=True)
 
-    def find_one(
+    async def find_one(
         self,
         filter: Optional[Expression | dict[Any, Any]] = None,
         projection: Optional[list[Field] | dict[Field, bool]] = None,
@@ -131,7 +131,7 @@ class Objects[T: Table]:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
 
-        document = collection.find_one(
+        document = await collection.find_one(
             filter=translate_filter(filter),
             projection=translate_projection(projection),
             skip=skip,
@@ -142,7 +142,7 @@ class Objects[T: Table]:
             return None
         return self.table.load(document, partial=True)
 
-    def find_one_and_delete(
+    async def find_one_and_delete(
         self,
         filter: Expression | dict[Any, Any],
         projection: Optional[list[Field] | dict[Field, bool]] = None,
@@ -150,7 +150,7 @@ class Objects[T: Table]:
     ) -> T | None:
         collection: MongoCollection = self.table.__collection__
 
-        document = collection.find_one_and_delete(
+        document = await collection.find_one_and_delete(
             filter=translate_filter(filter),
             projection=translate_projection(projection),
             sort=translate_sort(sort),
@@ -159,7 +159,7 @@ class Objects[T: Table]:
             return None
         return self.table.load(document, partial=True)
 
-    def find_one_and_replace(
+    async def find_one_and_replace(
         self,
         filter: Expression | dict[Any, Any],
         replacement: T,
@@ -170,7 +170,7 @@ class Objects[T: Table]:
     ) -> T | None:
         collection: MongoCollection = self.table.__collection__
 
-        document = collection.find_one_and_replace(
+        document = await collection.find_one_and_replace(
             filter=translate_filter(filter),
             replacement=replacement.to_mongo(),
             projection=translate_projection(projection),
@@ -182,7 +182,7 @@ class Objects[T: Table]:
             return None
         return self.table.load(document, partial=True)
 
-    def find_one_and_update(
+    async def find_one_and_update(
         self,
         filter: Expression | dict[Any, Any],
         update: Mapping[str, Any] | list[Mapping[str, Any]],
@@ -193,7 +193,7 @@ class Objects[T: Table]:
     ) -> T | None:
         collection: MongoCollection = self.table.__collection__
 
-        document = collection.find_one_and_update(
+        document = await collection.find_one_and_update(
             filter=translate_filter(filter),
             update=update,
             projection=translate_projection(projection),
@@ -205,25 +205,25 @@ class Objects[T: Table]:
             return None
         return self.table.load(document, partial=True)
 
-    def delete_one(
+    async def delete_one(
         self,
         filter: Optional[Expression | dict[Any, Any]] = None,
     ) -> MongoDeleteResult:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
 
-        return collection.delete_one(translate_filter(filter))
+        return await collection.delete_one(translate_filter(filter))
 
-    def delete_many(
+    async def delete_many(
         self,
         filter: Optional[Expression | dict[Any, Any]] = None,
     ) -> MongoDeleteResult:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
 
-        return collection.delete_many(translate_filter(filter))
+        return await collection.delete_many(translate_filter(filter))
 
-    def update_one(
+    async def update_one(
         self,
         filter: Expression | dict[Any, Any],
         update: Mapping[str, Any] | list[Mapping[str, Any]],
@@ -232,13 +232,13 @@ class Objects[T: Table]:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
 
-        return collection.update_one(
+        return await collection.update_one(
             translate_filter(filter),
             update,
             upsert=upsert,
         )
 
-    def update_many(
+    async def update_many(
         self,
         filter: Expression | dict[Any, Any],
         update: Mapping[str, Any] | list[Mapping[str, Any]],
@@ -247,22 +247,22 @@ class Objects[T: Table]:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
 
-        return collection.update_many(
+        return await collection.update_many(
             translate_filter(filter),
             update,
             upsert=upsert,
         )
 
-    def count_documents(
+    async def count_documents(
         self,
         filter: Expression | dict[Any, Any],
     ) -> int:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
 
-        return collection.count_documents(translate_filter(filter))
+        return await collection.count_documents(translate_filter(filter))
 
-    def bulk_write(
+    async def bulk_write(
         self,
         *requests: DeleteMany
         | DeleteOne
@@ -275,7 +275,7 @@ class Objects[T: Table]:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
 
-        return collection.bulk_write(
+        return await collection.bulk_write(
             [r.to_mongo() for r in requests], ordered=ordered
         )
 

@@ -34,6 +34,7 @@ test = "pytest --cov=typedmongo tests/"
 
 [tool.ruff]
 extend-select = ["I"]
+exclude = ["typedmongo/client.py"]
 
 [tool.ruff.lint]
 ignore = ["E731"]

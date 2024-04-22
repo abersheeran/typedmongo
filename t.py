@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import motor.motor_asyncio as motor
+import pymongo
 
 import typedmongo
 
@@ -18,11 +18,10 @@ class User(typedmongo.Table):
 
 
 typedmongo.initial_collections(
-    motor.AsyncIOMotorClient().typedmongo,
+    pymongo.MongoClient().typedmongo,
     User,
     Wallet,
 )
-
 
 print(User.name == "Aber")
 print(User.age >= 18)
@@ -49,4 +48,7 @@ user.wallet
 user.children
 print(user)
 
-User.objects
+for user in User.objects.find(
+    (User.name == "Aber") & (User.age >= 18), [User.name, User.age]
+):
+    print(user)
