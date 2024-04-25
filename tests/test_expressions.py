@@ -84,6 +84,14 @@ field = Field("name")
                 NotExpression(CompareExpression(field, "==", 35)),
             ),
         ),
+        (
+            ~~((field > 18) & (field < 35)),
+            CombineExpression(
+                "AND",
+                CompareExpression(field, ">", 18),
+                CompareExpression(field, "<", 35),
+            ),
+        ),
     ],
 )
 def test_compile_expressions(expression, expected):

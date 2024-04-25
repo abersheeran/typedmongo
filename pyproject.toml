@@ -46,17 +46,14 @@ exclude = ["typedmongo/client.py", "typedmongo/fields.py", "typedmongo/table.py"
 ignore = ["E731"]
 extend-select = ["I"]
 
-[tool.coverage]
-ignores = [
-    "raise NotImplementedError"
-]
-
 [tool.coverage.run]
 omit = ["*/.venv/*", "*/tests/*"]
 
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
+    "case _:",
+    "return NotImplemented",
     "raise NotImplementedError",
     "if False:",
     "assert False",

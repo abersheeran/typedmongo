@@ -63,7 +63,7 @@ def document_id():
 
 
 def test_one_command(document_id):
-    user = User.objects.find_one(User._id == document_id)
+    user = User.objects.find_one(User._id == document_id, sort=[+User.age])
     assert user is not None
     assert user.name == "Aber"
     assert user.wallet.balance == Decimal("100")
@@ -139,7 +139,7 @@ def documents_id():
 
 
 def test_many_comand(documents_id):
-    users = [user for user in User.objects.find(User.age == 18)]
+    users = [user for user in User.objects.find(User.age == 18, sort=[-User.age])]
     assert len(users) == 2
 
     users = [user for user in User.objects.find({"_id": {"$in": documents_id}})]
@@ -165,3 +165,21 @@ def test_bulk_write(documents_id):
         mongo.UpdateMany({}, {"$set": {"age": 25}}),
         mongo.UpdateMany(User.name == "Yue", {"$set": {"name": "yue"}}),
     )
+
+
+User.__lazy_init_fields__()
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        User.name == "Aber",
+        User.name != "Aber",
+        (User.name == "Aber") & (User.age == 18),
+        (User.name == "Aber") | (User.age > 20),
+        (User.name == "Aber") & (User.age <= 20),
+        (User.name == "Aber") & ~(User.age > 20),
+    ],
+)
+def test_filter_expressions(documents_id, expression):
+    assert User.objects.count_documents(expression) == 1
