@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
 
 import typedmongo.asyncio as mongo
+from typedmongo.marshamallow import MarshamallowObjectId
 
 
 class MongoTable(mongo.Table):
     __abstract__ = True
 
-    _id: mongo.ObjectIdField
+    _id: mongo.ObjectIdField = mongo.ObjectIdField(
+        marshamallow=MarshamallowObjectId(required=False)
+    )
 
 
 class Wallet(mongo.Table):
@@ -24,15 +29,24 @@ class User(MongoTable):
     children: mongo.ListField[User]
 
 
-@pytest.fixture(scope="module", autouse=True)
+# If use scope="module", the test will fail. Because pytest-asyncio close the event loop.
+@pytest.fixture(scope="function", autouse=True)
 async def init_models():
     await mongo.initial_collections(
         MongoClient().mongo,
         User,
     )
+    yield
+    await User.objects.drop()
 
 
-async def test_insert_one():
+async def test_use_objects_in_instance():
+    with pytest.raises(AttributeError):
+        User.load({}, partial=True).objects
+
+
+@pytest.fixture
+async def document_id():
     document_id = await User.objects.insert_one(
         User.load(
             {
@@ -42,9 +56,99 @@ async def test_insert_one():
                 "wallet": {"balance": 100},
                 "children": [],
             },
-            partial=True,
         )
     )
+    yield document_id
+    await User.objects.delete_one(User._id == document_id)
+
+
+async def test_one_command(document_id):
     user = await User.objects.find_one(User._id == document_id)
     assert user is not None
     assert user.name == "Aber"
+    assert user.wallet.balance == Decimal("100")
+
+    update_result = await User.objects.update_one(
+        User._id == document_id, {"$set": {"tags": ["a", "b", "e", "r"]}}
+    )
+    assert update_result.modified_count == 1
+
+    user = await User.objects.find_one(User._id == document_id)
+    assert user is not None
+    assert user.tags == ["a", "b", "e", "r"]
+
+    delete_result = await User.objects.delete_one(User._id == document_id)
+    assert delete_result.deleted_count == 1
+
+
+async def test_find_one_and_command(document_id):
+    user = await User.objects.find_one_and_update(
+        User._id == document_id, {"$set": {"tags": ["a", "b", "e"]}}
+    )
+    assert user is not None
+    assert user.tags == ["a", "b"]
+
+    user = await User.objects.find_one_and_update(
+        User._id == document_id,
+        {"$set": {"tags": ["a", "b", "e", "r"]}},
+        after_document=True,
+    )
+    assert user is not None
+    assert user.tags == ["a", "b", "e", "r"]
+
+    user = await User.objects.find_one_and_replace(
+        User._id == document_id,
+        User.load({"name": "Aber", "age": 0}),
+        after_document=True,
+    )
+    assert user is not None
+    assert user.age == 0
+
+    user = await User.objects.find_one_and_delete(User._id == document_id)
+    assert user is not None
+    assert user.name == "Aber"
+
+    user = await User.objects.find_one(User._id == document_id)
+    assert user is None
+
+
+@pytest.fixture
+async def documents_id():
+    documents_id = await User.objects.insert_many(
+        User.load(
+            {
+                "name": "Aber",
+                "age": 18,
+                "tags": ["a", "b"],
+                "wallet": {"balance": 100},
+                "children": [],
+            },
+        ),
+        User.load(
+            {
+                "name": "Yue",
+                "age": 18,
+                "tags": ["y", "u"],
+                "wallet": {"balance": 200},
+                "children": [],
+            },
+        ),
+    )
+    yield documents_id
+    await User.objects.delete_many({"_id": {"$in": documents_id}})
+
+
+async def test_many_comand(documents_id):
+    users = [user async for user in User.objects.find(User.age == 18)]
+    assert len(users) == 2
+
+    users = [user async for user in User.objects.find({"_id": {"$in": documents_id}})]
+    assert len(users) == len(documents_id)
+
+    update_result = await User.objects.update_many(
+        User.wallet._.balance == Decimal("100"), {"$inc": {"wallet.balance": 10}}
+    )
+    assert update_result.modified_count == 1
+    user = await User.objects.find_one(User.wallet._.balance == Decimal("110"))
+    assert user is not None
+    assert user.wallet.balance == Decimal(110)

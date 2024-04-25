@@ -304,6 +304,12 @@ class Objects(Generic[T]):
             [r.to_mongo() for r in requests], ordered=ordered
         )
 
+    async def drop(self) -> None:
+        # Just for IDE display method docs
+        collection: MongoCollection = self.table.__collection__
+
+        await collection.drop()
+
 
 @dataclasses.dataclass
 class DeleteMany:

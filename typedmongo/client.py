@@ -68,12 +68,10 @@ def initial_collections(db: MongoDatabase, *tables: type[Table]) -> None:
 
 class Manager:
     @overload
-    def __get__(self, instance: None, cls: type[T]) -> Objects[T]:
-        ...
+    def __get__(self, instance: None, cls: type[T]) -> Objects[T]: ...
 
     @overload
-    def __get__(self, instance: T, cls: type[T]) -> NoReturn:
-        ...
+    def __get__(self, instance: T, cls: type[T]) -> NoReturn: ...
 
     def __get__(self, instance, cls):
         if instance is None:
@@ -305,6 +303,12 @@ class Objects(Generic[T]):
         return collection.bulk_write(
             [r.to_mongo() for r in requests], ordered=ordered
         )
+
+    def drop(self) -> None:
+        # Just for IDE display method docs
+        collection: MongoCollection = self.table.__collection__
+
+        collection.drop()
 
 
 @dataclasses.dataclass

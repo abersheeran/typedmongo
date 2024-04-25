@@ -16,11 +16,11 @@ from typing import (
 )
 
 from bson import ObjectId
-from bson.errors import InvalidId
-from marshmallow import ValidationError, fields
+from marshmallow import fields
 from typing_extensions import Self
 
 from typedmongo.expressions import CompareMixin, HasFieldName, OrderByMixin
+from typedmongo.marshamallow import MarshamallowObjectId
 
 if TYPE_CHECKING:
     from .table import Table
@@ -61,16 +61,15 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
             self.marshamallow = fields.Field(required=True)
 
         if self.default is not None:
+            # https://github.com/marshmallow-code/marshmallow/issues/2151
             self.marshamallow.required = False
             self.marshamallow.load_default = self.default
 
     @overload
-    def __get__(self: Self, instance: None, cls: type) -> Self:
-        ...
+    def __get__(self: Self, instance: None, cls: type) -> Self: ...
 
     @overload
-    def __get__(self: Self, instance: object, cls: type) -> FieldType:
-        ...
+    def __get__(self: Self, instance: object, cls: type) -> FieldType: ...
 
     def __get__(self, instance, cls):
         if instance is None:  # Call from class
@@ -110,24 +109,13 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
         return value
 
 
-class _ObjectIdField(fields.Field):
-    def _serialize(self, value: ObjectId, attr, obj, **kwargs):
-        return str(value)
-
-    def _deserialize(self, value: str, attr, data, **kwargs):
-        try:
-            return ObjectId(value)
-        except (InvalidId, TypeError):
-            raise ValidationError("Invalid ObjectId.")
-
-
 @dataclasses.dataclass(eq=False)
 class ObjectIdField(Field[ObjectId]):
     """
     ObjectId field
     """
 
-    marshamallow: fields.Field = _ObjectIdField(required=True)
+    marshamallow: fields.Field = MarshamallowObjectId(required=True)
 
 
 @dataclasses.dataclass(eq=False)
@@ -189,8 +177,7 @@ class FieldNameProxy(Generic[TypeTable]):
     prefix: HasFieldName
     t: TypeTable
 
-    def __get__(self, instance, owner) -> TypeTable:
-        ...
+    def __get__(self, instance, owner) -> TypeTable: ...
 
     def __getattr__(self, name: str) -> FieldNameProxyString:
         try:
@@ -248,8 +235,7 @@ class ListFieldNameProxy(Generic[TypeTableOrAny], OrderByMixin, CompareMixin):
             return self.prefix.field_name
         return f"{self.prefix.field_name}.{self.number}"
 
-    def __get__(self, instance, owner) -> TypeTableOrAny:
-        ...
+    def __get__(self, instance, owner) -> TypeTableOrAny: ...
 
     def __getattr__(self, name: str) -> FieldNameProxyString:
         try:

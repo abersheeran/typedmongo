@@ -16,11 +16,11 @@ from typing import (
 )
 
 from bson import ObjectId
-from bson.errors import InvalidId
-from marshmallow import ValidationError, fields
+from marshmallow import fields
 from typing_extensions import Self
 
 from typedmongo.expressions import CompareMixin, HasFieldName, OrderByMixin
+from typedmongo.marshamallow import MarshamallowObjectId
 
 if TYPE_CHECKING:
     from .table import Table
@@ -109,24 +109,13 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
         return value
 
 
-class _ObjectIdField(fields.Field):
-    def _serialize(self, value: ObjectId, attr, obj, **kwargs):
-        return str(value)
-
-    def _deserialize(self, value: str, attr, data, **kwargs):
-        try:
-            return ObjectId(value)
-        except (InvalidId, TypeError):
-            raise ValidationError("Invalid ObjectId.")
-
-
 @dataclasses.dataclass(eq=False)
 class ObjectIdField(Field[ObjectId]):
     """
     ObjectId field
     """
 
-    marshamallow: fields.Field = _ObjectIdField(required=True)
+    marshamallow: fields.Field = MarshamallowObjectId(required=True)
 
 
 @dataclasses.dataclass(eq=False)
