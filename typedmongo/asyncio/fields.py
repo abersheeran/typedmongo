@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import dataclasses
+import decimal
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Generic,
+    Optional,
     TypeVar,
     get_args,
     get_origin,
@@ -29,12 +32,22 @@ TypeTableOrAny = TypeVar("TypeTableOrAny", bound=type["Table"] | Any)
 FieldType = TypeVar("FieldType")
 
 
+@dataclasses.dataclass
+class FieldParamters(Generic[FieldType]):
+    default: Optional[FieldType | Callable[[], FieldType]] = dataclasses.field(
+        default=None, kw_only=True
+    )
+
+
 @dataclasses.dataclass(eq=False)
 class Field(Generic[FieldType], OrderByMixin, CompareMixin):
     """
     Field
     """
 
+    default: Optional[FieldType | Callable[[], FieldType]] = dataclasses.field(
+        default=None, kw_only=True
+    )
     field_name: str = dataclasses.field(init=False)
     marshamallow: fields.Field = dataclasses.field(init=False)
 
@@ -46,6 +59,10 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
 
         if not hasattr(self, "marshamallow"):
             self.marshamallow = fields.Field(required=True)
+
+        if self.default is not None:
+            self.marshamallow.required = False
+            self.marshamallow.load_default = self.default
 
     @overload
     def __get__(self: Self, instance: None, cls: type) -> Self:
@@ -89,7 +106,7 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
     def load(self, value: Any, *, partial: bool = False) -> FieldType:
         return value
 
-    def to_mongo(self, value: FieldType) -> Any:
+    def dump(self, value: FieldType) -> Any:
         return value
 
 
@@ -158,6 +175,15 @@ class DateTimeField(Field[datetime]):
     marshamallow: fields.Field = fields.DateTime(required=True)
 
 
+@dataclasses.dataclass(eq=False)
+class DecimalField(Field[decimal.Decimal]):
+    """
+    Decimal field
+    """
+
+    marshamallow: fields.Field = fields.Decimal(required=True)
+
+
 @dataclasses.dataclass
 class FieldNameProxy(Generic[TypeTable]):
     prefix: HasFieldName
@@ -193,12 +219,21 @@ class EmbeddedField(Generic[T], Field[T]):
 
     def __post_init__(self):
         self._ = FieldNameProxy(self, self.schema)
-        self.marshamallow = fields.Nested(self.schema.__schema__)
+        self.marshamallow = fields.Nested(lambda: self.schema.__schema__)
 
         def load(value: Any, *, partial: bool = False) -> T:
             return self.schema.load(value, partial=partial)
 
+        def dump(value: T) -> dict[str, Any]:
+            return self.schema.dump(value)
+
         self.load = load
+        self.dump = dump
+
+    def __set_name__(self, owner: type[Table], name: str) -> None:
+        if not issubclass(self.schema, owner):
+            self.schema.__lazy_init_fields__()
+        return super().__set_name__(owner, name)
 
 
 @dataclasses.dataclass(eq=False)
@@ -246,7 +281,7 @@ class ListField(Generic[A], Field[list[A]]):
 
         if issubclass(self.type_or_schema, Table):
             self.marshamallow = fields.List(
-                fields.Nested(self.type_or_schema.__schema__)
+                fields.Nested(lambda: self.type_or_schema.__schema__)  # type: ignore
             )
 
             def load(value: Any, *, partial: bool = False) -> list[A]:
@@ -255,7 +290,11 @@ class ListField(Generic[A], Field[list[A]]):
                     for item in value
                 ]
 
+            def dump(value: list[A]) -> list[dict[str, Any]]:
+                return [self.type_or_schema.dump(item) for item in value]  # type: ignore
+
             self.load = load
+            self.dump = dump
         else:
             self.marshamallow = fields.List(
                 {
@@ -266,3 +305,12 @@ class ListField(Generic[A], Field[list[A]]):
                     datetime: fields.DateTime(required=True),
                 }[self.type_or_schema]  # type: ignore
             )
+
+    def __set_name__(self, owner: type[Table], name: str) -> None:
+        from .table import Table
+
+        if issubclass(self.type_or_schema, Table) and not issubclass(
+            self.type_or_schema, owner
+        ):
+            self.type_or_schema.__lazy_init_fields__()
+        return super().__set_name__(owner, name)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import decimal
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -14,6 +15,8 @@ from typing import (
     overload,
 )
 
+from bson.codec_options import CodecOptions, TypeCodec, TypeRegistry
+from bson.decimal128 import Decimal128
 from pymongo.operations import DeleteMany as MongoDeleteMany
 from pymongo.operations import DeleteOne as MongoDeleteOne
 from pymongo.operations import InsertOne as MongoInsertOne
@@ -37,11 +40,30 @@ DocumentId: TypeAlias = Any
 T = TypeVar("T", bound="Table")
 
 
+class DecimalCodec(TypeCodec):
+    python_type = decimal.Decimal  # type: ignore
+    bson_type = Decimal128  # type: ignore
+
+    def transform_python(self, value: decimal.Decimal) -> Decimal128:
+        """Function that transforms a custom type value into a type
+        that BSON can encode."""
+        return Decimal128(value)
+
+    def transform_bson(self, value: Decimal128) -> decimal.Decimal:
+        """Function that transforms a vanilla BSON type value into our
+        custom type."""
+        return value.to_decimal()
+
+
 def initial_collections(db: MongoDatabase, *tables: type[Table]) -> None:
     for table in tables:
         table.__lazy_init_fields__()
         table.__database__ = db
-        table.__collection__ = db[table.__collection_name__]
+        type_registry = TypeRegistry([DecimalCodec()])
+        codec_options = CodecOptions(type_registry=type_registry)
+        table.__collection__ = db.get_collection(
+            table.__collection_name__, codec_options=codec_options
+        )
 
 
 class Manager:

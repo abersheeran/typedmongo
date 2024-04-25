@@ -1,15 +1,16 @@
-from typedmongo.fields import (
+from .client import initial_collections
+from .fields import (
     BooleanField,
     DateTimeField,
+    DecimalField,
     EmbeddedField,
+    FieldParamters,
     FloatField,
     IntegerField,
     ListField,
     ObjectIdField,
     StringField,
 )
-
-from .client import initial_collections
 from .table import Index, Table
 
 __all__ = [
@@ -18,7 +19,9 @@ __all__ = [
     "Table",
     "BooleanField",
     "DateTimeField",
+    "DecimalField",
     "EmbeddedField",
+    "FieldParamters",
     "FloatField",
     "IntegerField",
     "ListField",

@@ -14,12 +14,12 @@ from typing import (
 
 from marshmallow import Schema
 from pymongo import IndexModel
-from typing_extensions import Self
+from typing_extensions import Self, dataclass_transform
 
 from typedmongo.exceptions import TableDefineError
 
 from .client import Manager
-from .fields import Field, ObjectIdField
+from .fields import Field
 
 
 def snake_case(name: str) -> str:
@@ -62,14 +62,17 @@ class Index:
         )
 
 
+@dataclass_transform(eq_default=False, kw_only_default=True)
 class TableMetaClass(type):
     if TYPE_CHECKING:
         __abstract__: bool
         __database__: Any
         __collection_name__: str
         __collection__: Any
-        __fields__: dict[str, Field]
+        __pfields__: dict[str, Field]
+        __sfields__: dict[str, Field]
         __fields_loaded__: bool
+        __fields__: dict[str, Field]
         __create_schema__: Callable[[str, dict[str, Field]], Schema]
         __schema__: Schema
 
@@ -87,30 +90,36 @@ class TableMetaClass(type):
         namespace.setdefault("__collection_name__", snake_case(name))
         namespace.setdefault("__abstract__", False)
 
-        # merge bases' `__fields__` to `__fields__`
-        fields = {
+        if "__fields__" in namespace:  # Clear __fields__ to avoid conflict
+            del namespace["__fields__"]
+        namespace["__fields_loaded__"] = False
+
+        namespace["__sfields__"] = {
             name: value for name, value in namespace.items() if isinstance(value, Field)
         }
-        namespace["__fields_loaded__"] = not not fields
-        namespace["__fields__"] = reduce(
+        # merge bases' `__fields__` to `__pfields__`
+        namespace["__pfields__"] = reduce(
             lambda _initial, _item: {**_item, **_initial},
-            reversed([getattr(base, "__fields__", {}) for base in bases]),
-            fields,
+            reversed(
+                [
+                    base.__lazy_init_fields__()
+                    for base in bases
+                    if isinstance(base, TableMetaClass)
+                ]
+            ),
+            {},
         )
 
         if "__create_schema__" not in namespace:
             for base in bases:
                 create_schema = base.__create_schema__
             namespace["__create_schema__"] = create_schema
-        namespace["__schema__"] = namespace["__create_schema__"](
-            name, namespace["__fields__"]
-        )
 
         return super().__new__(cls, name, bases, namespace)
 
-    def __lazy_init_fields__(cls) -> None:
+    def __lazy_init_fields__(cls) -> dict[str, Field]:
         if cls.__fields_loaded__:
-            return
+            return cls.__fields__
 
         fields = {
             **{
@@ -125,13 +134,17 @@ class TableMetaClass(type):
                 and isinstance(origin_class, type)
                 and issubclass(origin_class, Field)
             },
+            **cls.__sfields__,
         }
+        cls.__fields__ = {**cls.__pfields__, **fields}
+        cls.__fields_loaded__ = True
+
         for name, field in fields.items():
             setattr(cls, name, field)
             field.__set_name__(cls, name)
-        cls.__fields_loaded__ = True
-        cls.__fields__ = {**cls.__fields__, **fields}
-        cls.__schema__ = cls.__create_schema__(cls.__name__, fields)
+
+        cls.__schema__ = cls.__create_schema__(cls.__name__, cls.__fields__)
+        return fields
 
     def __call__(cls, **kwargs: Any):
         instance = super().__call__()
@@ -157,9 +170,7 @@ class TableMetaClass(type):
 
 
 class Table(metaclass=TableMetaClass):
-    __abstract__: bool = True
-
-    _id = ObjectIdField()
+    __abstract__ = True
 
     objects = Manager()
 
@@ -191,9 +202,13 @@ class Table(metaclass=TableMetaClass):
         }
         return cls(**loaded)
 
-    def to_mongo(self) -> dict[str, Any]:
-        return {
-            key: getattr(self.__fields__[key], "to_mongo")(value)
-            for key, value in self.__dict__.items()
-            if key in self.__fields__
+    @classmethod
+    def dump(cls, instance: Self) -> dict[str, Any]:
+        dumped = {
+            key: getattr(instance.__fields__[key], "dump")(value)
+            for key, value in instance.__dict__.items()
         }
+        return cls.__schema__.dump(dumped)  # type: ignore
+
+    def to_mongo(self) -> dict[str, Any]:
+        return self.dump(self)
