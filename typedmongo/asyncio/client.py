@@ -68,12 +68,10 @@ async def initial_collections(db: MongoDatabase, *tables: type[Table]) -> None:
 
 class Manager:
     @overload
-    def __get__(self, instance: None, cls: type[T]) -> Objects[T]:
-        ...
+    def __get__(self, instance: None, cls: type[T]) -> Objects[T]: ...
 
     @overload
-    def __get__(self, instance: T, cls: type[T]) -> NoReturn:
-        ...
+    def __get__(self, instance: T, cls: type[T]) -> NoReturn: ...
 
     def __get__(self, instance, cls):
         if instance is None:

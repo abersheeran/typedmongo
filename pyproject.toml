@@ -28,20 +28,23 @@ test = [
     "pytest-cov>=5.0.0",
     "pytest-asyncio>=0.23.6",
 ]
+dev = [
+    "ruff>=0.4.1",
+]
 
 [tool.pdm.scripts]
 format = "ruff format ."
-lint = "ruff ."
+lint = "ruff check ."
 pre_test = "python tests/sync.py"
 test = "pytest --cov=typedmongo --asyncio-mode=auto tests/"
 sync = "python typedmongo/sync.py"
 
 [tool.ruff]
-extend-select = ["I"]
 exclude = ["typedmongo/client.py", "typedmongo/fields.py", "typedmongo/table.py"]
 
 [tool.ruff.lint]
 ignore = ["E731"]
+extend-select = ["I"]
 
 [tool.coverage]
 ignores = [
