@@ -1,4 +1,12 @@
-from .client import initial_collections
+from .client import (
+    DeleteMany,
+    DeleteOne,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+    initial_collections,
+)
 from .fields import (
     BooleanField,
     DateTimeField,
@@ -14,6 +22,12 @@ from .fields import (
 from .table import Index, Table
 
 __all__ = [
+    "DeleteMany",
+    "DeleteOne",
+    "InsertOne",
+    "ReplaceOne",
+    "UpdateMany",
+    "UpdateOne",
     "initial_collections",
     "Index",
     "Table",

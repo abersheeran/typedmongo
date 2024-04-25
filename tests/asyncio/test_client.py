@@ -152,3 +152,16 @@ async def test_many_comand(documents_id):
     user = await User.objects.find_one(User.wallet._.balance == Decimal("110"))
     assert user is not None
     assert user.wallet.balance == Decimal(110)
+
+    assert await User.objects.count_documents(User.age >= 0) == 2
+
+
+async def test_bulk_write(documents_id):
+    await User.objects.bulk_write(
+        mongo.DeleteOne(User._id == 0),
+        mongo.DeleteMany(User.age < 18),
+        mongo.InsertOne(User.load({"name": "InsertOne"}, partial=True)),
+        mongo.ReplaceOne(User.name == "Aber", User.load({}, partial=True)),
+        mongo.UpdateMany({}, {"$set": {"age": 25}}),
+        mongo.UpdateMany(User.name == "Yue", {"$set": {"name": "yue"}}),
+    )
