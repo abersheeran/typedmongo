@@ -61,9 +61,14 @@ async def initial_collections(db: MongoDatabase, *tables: type[Table]) -> None:
         table.__database__ = db
         type_registry = TypeRegistry([DecimalCodec()])
         codec_options = CodecOptions(type_registry=type_registry)
-        table.__collection__ = db.get_collection(
+        table.__collection__ = collection = db.get_collection(
             table.__collection_name__, codec_options=codec_options
         )
+        indexes = table.indexes()
+        if indexes:
+            await collection.create_indexes(
+                [index.to_index_model() for index in indexes]
+            )
 
 
 class Manager:

@@ -34,7 +34,11 @@ def snake_case(name: str) -> str:
 
 @dataclasses.dataclass
 class Index:
-    keys: Field | Sequence[tuple[Field, int]] | Mapping[Field, Any]
+    keys: (
+        Field
+        | Sequence[tuple[Field, int | str | Mapping[str, Any]]]
+        | Mapping[Field, Any]
+    )
 
     name: Optional[str] = None
     unique: bool = False
@@ -209,6 +213,10 @@ class Table(metaclass=TableMetaClass):
             for key, value in instance.__dict__.items()
         }
         return cls.__schema__.dump(dumped)  # type: ignore
+
+    @classmethod
+    def indexes(cls) -> list[Index]:
+        return []
 
     def to_mongo(self) -> dict[str, Any]:
         return self.dump(self)

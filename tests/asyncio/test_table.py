@@ -4,26 +4,31 @@ import uuid
 
 import pytest
 
-from typedmongo.asyncio import Table, fields
+import typedmongo.asyncio as mongo
 from typedmongo.expressions import Expression
 
 
-class MongoTable(Table):
+class MongoTable(mongo.Table):
     __abstract__ = True
 
-    _id: fields.StringField = fields.StringField(default=lambda: uuid.uuid4().hex)
+    _id: mongo.StringField = mongo.StringField(default=lambda: uuid.uuid4().hex)
 
 
-class Wallet(Table):
-    balance: fields.DecimalField
+class Wallet(mongo.Table):
+    balance: mongo.DecimalField
 
 
 class User(MongoTable):
-    name: fields.StringField
-    age: fields.IntegerField
-    tags: fields.ListField[str]
-    wallet: fields.EmbeddedField[Wallet]
-    children: fields.ListField[User]
+    name: mongo.StringField
+    age: mongo.IntegerField
+    tags: mongo.ListField[str]
+    wallet: mongo.EmbeddedField[Wallet]
+    children: mongo.ListField[User]
+
+    @classmethod
+    def indexes(cls) -> list[mongo.Index]:
+        super_indexes = super().indexes()
+        return [*super_indexes, mongo.Index(cls.age)]
 
 
 User.__lazy_init_fields__()
