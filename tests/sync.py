@@ -17,8 +17,7 @@ def main(just_check: bool = False):
                 "from motor.motor_asyncio import AsyncIOMotorClient as MongoClient",
                 "from pymongo import MongoClient",
             )
-            .replace("import typedmongo.asyncio as mongo", "import typedmongo as mongo")
-            .replace("@pytest.mark.asyncio\n", "")
+            .replace("typedmongo.asyncio", "typedmongo")
             .replace("async def ", "def ")
             .replace("await ", "")
             .replace("async for ", "for ")

@@ -4,7 +4,7 @@ import uuid
 
 import pytest
 
-from typedmongo.asyncio import Table, fields
+from typedmongo import Table, fields
 from typedmongo.expressions import Expression
 
 
