@@ -182,7 +182,7 @@ class Table(metaclass=TableMetaClass):
         return "{class_name}({fields})".format(
             class_name=self.__class__.__name__,
             fields=", ".join(
-                f"{name}={self.__dict__[name]}"
+                f"{name}={repr(self.__dict__[name])}"
                 for name, _ in self.__fields__.items()
                 if name in self.__dict__
             ),
