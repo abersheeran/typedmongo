@@ -45,6 +45,6 @@ async def test_insert_one():
             partial=True,
         )
     )
-    user = await User.objects.find_one({"_id": document_id})
+    user = await User.objects.find_one(User._id == document_id)
     assert user is not None
     assert user.name == "Aber"
