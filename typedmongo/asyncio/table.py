@@ -197,6 +197,13 @@ class Table(metaclass=TableMetaClass):
     def load(
         cls: type[Self], data: Mapping[str, Any], *, partial: bool = False
     ) -> Self:
+        """
+        Load data from dict to instance, and validate the data.
+
+        :param data: The data to load.
+        :param partial: If True, allow partial data to load.
+            The default value would NOT be loaded when partial is True.
+        """
         validated = cls.__schema__.load(data=data, partial=partial)
         loaded = {
             key: getattr(cls.__fields__[key], "load")(value, partial=partial)

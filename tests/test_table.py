@@ -103,3 +103,9 @@ def test_recursion_field():
     assert isinstance(user.children[0], User)
     assert user.children[0].name == "Yue"
     assert isinstance(user.children[0]._id, str)
+
+
+def test_empty_field():
+    user = User.load({}, partial=True)
+    assert not hasattr(user, "name")
+    assert not hasattr(user, "_id")
