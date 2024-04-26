@@ -198,5 +198,5 @@ async def test_filter_expressions(documents_id, expression):
     ],
 )
 async def test_projection(documents_id, projection):
-    user = User.objects.find_one(User.age == 18, projection=projection)
+    user = await User.objects.find_one(User.age == 18, projection=projection)
     assert user is not None
