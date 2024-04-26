@@ -39,7 +39,7 @@ class FieldParamters(Generic[FieldType]):
     )
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, order=False, unsafe_hash=True)
 class Field(Generic[FieldType], OrderByMixin, CompareMixin):
     """
     Field

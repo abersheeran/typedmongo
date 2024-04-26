@@ -188,3 +188,15 @@ User.__lazy_init_fields__()
 )
 async def test_filter_expressions(documents_id, expression):
     assert await User.objects.count_documents(expression) == 1
+
+
+@pytest.mark.parametrize(
+    "projection",
+    [
+        [User.name],
+        {User.name: True, User._id: False},
+    ],
+)
+async def test_projection(documents_id, projection):
+    user = User.objects.find_one(User.age == 18, projection=projection)
+    assert user is not None
