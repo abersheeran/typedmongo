@@ -55,15 +55,13 @@ class Index:
         else:
             keys = [(field.field_name, value) for field, value in self.keys]
 
-        return IndexModel(
-            keys=keys,
-            name=self.name,
-            unique=self.unique,
-            background=self.background,
-            sparse=self.sparse,
-            expireAfterSeconds=self.expireAfterSeconds,
-            partialFilterExpression=self.partialFilterExpression,
-        )
+        parameters = dataclasses.asdict(self)
+        del parameters["keys"]
+        if parameters["partialFilterExpression"] is None:
+            del parameters["partialFilterExpression"]
+        if parameters["expireAfterSeconds"] is None:
+            del parameters["expireAfterSeconds"]
+        return IndexModel(keys=keys, **parameters)
 
 
 @dataclass_transform(eq_default=False, kw_only_default=True)
@@ -182,7 +180,7 @@ class Table(metaclass=TableMetaClass):
         return "{class_name}({fields})".format(
             class_name=self.__class__.__name__,
             fields=", ".join(
-                f"{name}={self.__dict__[name]}"
+                f"{name}={repr(self.__dict__[name])}"
                 for name, _ in self.__fields__.items()
                 if name in self.__dict__
             ),

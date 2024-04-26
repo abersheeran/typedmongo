@@ -28,6 +28,11 @@ class User(MongoTable):
     wallet: mongo.EmbeddedField[Wallet]
     children: mongo.ListField[User]
 
+    @classmethod
+    def indexes(cls) -> list[mongo.Index]:
+        super_indexes = super().indexes()
+        return [*super_indexes, mongo.Index(cls.age)]
+
 
 # If use scope="module", the test will fail. Because pytest-asyncio close the event loop.
 @pytest.fixture(scope="function", autouse=True)

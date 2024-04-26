@@ -25,11 +25,6 @@ class User(MongoTable):
     wallet: mongo.EmbeddedField[Wallet]
     children: mongo.ListField[User]
 
-    @classmethod
-    def indexes(cls) -> list[mongo.Index]:
-        super_indexes = super().indexes()
-        return [*super_indexes, mongo.Index(cls.age)]
-
 
 User.__lazy_init_fields__()
 
