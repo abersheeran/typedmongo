@@ -91,6 +91,12 @@ def test_field_default():
     )
     assert isinstance(user._id, str)
 
+    user = User(
+        name="Aber", age=18, tags=["a", "b"], wallet=Wallet(balance=100), children=[]
+    )
+    assert not hasattr(user, "_id")
+    assert isinstance(user.dump(user)["_id"], str)
+
 
 def test_recursion_field():
     user = User.load(

@@ -64,6 +64,7 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
             # https://github.com/marshmallow-code/marshmallow/issues/2151
             self.marshamallow.required = False
             self.marshamallow.load_default = self.default
+            self.marshamallow.dump_default = self.default
 
     @overload
     def __get__(self: Self, instance: None, cls: type) -> Self: ...
