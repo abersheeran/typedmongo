@@ -34,7 +34,8 @@ if TYPE_CHECKING:
     from .table import Table
 
 from typedmongo.expressions import Expression, OrderBy, compile_expression
-from typedmongo.fields import Field
+
+from .fields import Field
 
 DocumentId: TypeAlias = Any
 T = TypeVar("T", bound="Table")
