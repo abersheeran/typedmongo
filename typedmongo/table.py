@@ -202,12 +202,20 @@ class Table(metaclass=TableMetaClass):
 
         :param data: The data to load.
         :param partial: If True, allow partial data to load.
-            The default value would NOT be loaded when partial is True.
         """
-        validated = cls.__schema__.load(data=data, partial=partial)
+        validated: dict[str, Any] = cls.__schema__.load(data=data, partial=partial)  # type: ignore
+        if partial:
+            # The default value would NOT be loaded when partial is True.
+            # https://github.com/marshmallow-code/marshmallow/issues/2151
+            for key, field in cls.__fields__.items():
+                if field.default is not None:
+                    default_value = field.default
+                    if callable(default_value):
+                        default_value = default_value()
+                    validated.setdefault(key, default_value)
         loaded = {
             key: getattr(cls.__fields__[key], "load")(value, partial=partial)
-            for key, value in validated.items()  # type: ignore
+            for key, value in validated.items()
         }
         return cls(**loaded)
 

@@ -79,6 +79,18 @@ def test_field_default():
     )
     assert isinstance(user._id, str)
 
+    user = User.load(
+        {
+            "name": "Aber",
+            "age": 18,
+            "tags": ["a", "b"],
+            "wallet": {"balance": 100},
+            "children": [],
+        },
+        partial=True,
+    )
+    assert isinstance(user._id, str)
+
 
 def test_recursion_field():
     user = User.load(
@@ -108,4 +120,4 @@ def test_recursion_field():
 def test_empty_field():
     user = User.load({}, partial=True)
     assert not hasattr(user, "name")
-    assert not hasattr(user, "_id")
+    assert hasattr(user, "_id")

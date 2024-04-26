@@ -58,7 +58,7 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
         self.field_name = name
 
         if not hasattr(self, "marshamallow"):
-            self.marshamallow = fields.Field(required=True)
+            self.marshamallow = fields.Field(required=True, allow_none=False)
 
         if self.default is not None:
             # https://github.com/marshmallow-code/marshmallow/issues/2151
@@ -115,7 +115,7 @@ class ObjectIdField(Field[ObjectId]):
     ObjectId field
     """
 
-    marshamallow: fields.Field = MarshamallowObjectId(required=True)
+    marshamallow: fields.Field = MarshamallowObjectId(required=True, allow_none=False)
 
 
 @dataclasses.dataclass(eq=False)
@@ -124,7 +124,7 @@ class StringField(Field[str]):
     String field
     """
 
-    marshamallow: fields.Field = fields.String(required=True)
+    marshamallow: fields.Field = fields.String(required=True, allow_none=False)
 
 
 @dataclasses.dataclass(eq=False)
@@ -133,7 +133,7 @@ class IntegerField(Field[int]):
     Integer field
     """
 
-    marshamallow: fields.Field = fields.Integer(required=True)
+    marshamallow: fields.Field = fields.Integer(required=True, allow_none=False)
 
 
 @dataclasses.dataclass(eq=False)
@@ -142,7 +142,7 @@ class FloatField(Field[float]):
     Float field
     """
 
-    marshamallow: fields.Field = fields.Float(required=True)
+    marshamallow: fields.Field = fields.Float(required=True, allow_none=False)
 
 
 @dataclasses.dataclass(eq=False)
@@ -151,7 +151,7 @@ class BooleanField(Field[bool]):
     Boolean field
     """
 
-    marshamallow: fields.Field = fields.Boolean(required=True)
+    marshamallow: fields.Field = fields.Boolean(required=True, allow_none=False)
 
 
 @dataclasses.dataclass(eq=False)
@@ -160,7 +160,7 @@ class DateTimeField(Field[datetime]):
     DateTime field
     """
 
-    marshamallow: fields.Field = fields.DateTime(required=True)
+    marshamallow: fields.Field = fields.DateTime(required=True, allow_none=False)
 
 
 @dataclasses.dataclass(eq=False)
@@ -169,7 +169,7 @@ class DecimalField(Field[decimal.Decimal]):
     Decimal field
     """
 
-    marshamallow: fields.Field = fields.Decimal(required=True)
+    marshamallow: fields.Field = fields.Decimal(required=True, allow_none=False)
 
 
 @dataclasses.dataclass
@@ -284,11 +284,11 @@ class ListField(Generic[A], Field[list[A]]):
         else:
             self.marshamallow = fields.List(
                 {
-                    int: fields.Integer(required=True),
-                    float: fields.Float(required=True),
-                    bool: fields.Boolean(required=True),
-                    str: fields.String(required=True),
-                    datetime: fields.DateTime(required=True),
+                    int: fields.Integer(required=True, allow_none=False),
+                    float: fields.Float(required=True, allow_none=False),
+                    bool: fields.Boolean(required=True, allow_none=False),
+                    str: fields.String(required=True, allow_none=False),
+                    datetime: fields.DateTime(required=True, allow_none=False),
                 }[self.type_or_schema]  # type: ignore
             )
 
