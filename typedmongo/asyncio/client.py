@@ -7,6 +7,7 @@ from typing import (
     Any,
     AsyncIterable,
     Generic,
+    Literal,
     Mapping,
     NoReturn,
     Optional,
@@ -37,7 +38,6 @@ from typedmongo.expressions import Expression, OrderBy, compile_expression
 
 from .fields import Field
 
-DocumentId: TypeAlias = Any
 T = TypeVar("T", bound="Table")
 
 
@@ -86,6 +86,11 @@ class Manager:
         raise AttributeError("Manager is not accessible via instance")
 
 
+DocumentId: TypeAlias = Any
+Filter = Expression | dict[Any, Any]
+Projection: TypeAlias = list[Field] | dict[Field, bool] | dict[str, bool]
+Sort: TypeAlias = list[OrderBy] | list[tuple[str, Literal[1, -1]]]
+
 translate_filter = (
     lambda f: {}
     if f is None
@@ -97,13 +102,18 @@ translate_projection = (
     else (
         [f.field_name for f in p]
         if isinstance(p, list)
-        else {f.field_name: v for f, v in p.items()}
+        else {f.field_name if isinstance(f, Field) else f: v for f, v in p.items()}
     )
 )
 translate_sort = (
     lambda s: None
     if s is None
-    else [(order_by.field.field_name, order_by.order) for order_by in s]
+    else [
+        (order_by.field.field_name, order_by.order)
+        if isinstance(order_by, OrderBy)
+        else order_by
+        for order_by in s
+    ]
 )
 
 
@@ -131,11 +141,11 @@ class Objects(Generic[T]):
 
     async def find(
         self,
-        filter: Optional[Expression | dict[Any, Any]] = None,
-        projection: Optional[list[Field] | dict[Field, bool]] = None,
+        filter: Optional[Filter] = None,
+        projection: Optional[Projection] = None,
         skip: int = 0,
         limit: int = 0,
-        sort: Optional[list[OrderBy]] = None,
+        sort: Optional[Sort] = None,
         allow_disk_use: Optional[bool] = None,
     ) -> AsyncIterable[T]:
         # Just for IDE display method docs
@@ -153,10 +163,10 @@ class Objects(Generic[T]):
 
     async def find_one(
         self,
-        filter: Optional[Expression | dict[Any, Any]] = None,
-        projection: Optional[list[Field] | dict[Field, bool]] = None,
+        filter: Optional[Filter] = None,
+        projection: Optional[Projection] = None,
         skip: int = 0,
-        sort: Optional[list[OrderBy]] = None,
+        sort: Optional[Sort] = None,
         allow_disk_use: Optional[bool] = None,
     ) -> T | None:
         # Just for IDE display method docs
@@ -175,9 +185,9 @@ class Objects(Generic[T]):
 
     async def find_one_and_delete(
         self,
-        filter: Expression | dict[Any, Any],
-        projection: Optional[list[Field] | dict[Field, bool]] = None,
-        sort: Optional[list[OrderBy]] = None,
+        filter: Filter,
+        projection: Optional[Projection] = None,
+        sort: Optional[Sort] = None,
     ) -> T | None:
         collection: MongoCollection = self.table.__collection__
 
@@ -192,10 +202,10 @@ class Objects(Generic[T]):
 
     async def find_one_and_replace(
         self,
-        filter: Expression | dict[Any, Any],
+        filter: Filter,
         replacement: T,
-        projection: Optional[list[Field] | dict[Field, bool]] = None,
-        sort: Optional[list[OrderBy]] = None,
+        projection: Optional[Projection] = None,
+        sort: Optional[Sort] = None,
         upsert: bool = False,
         after_document: bool = False,
     ) -> T | None:
@@ -215,10 +225,10 @@ class Objects(Generic[T]):
 
     async def find_one_and_update(
         self,
-        filter: Expression | dict[Any, Any],
+        filter: Filter,
         update: Mapping[str, Any] | list[Mapping[str, Any]],
-        projection: Optional[list[Field] | dict[Field, bool]] = None,
-        sort: Optional[list[OrderBy]] = None,
+        projection: Optional[Projection] = None,
+        sort: Optional[Sort] = None,
         upsert: bool = False,
         after_document: bool = False,
     ) -> T | None:
@@ -238,7 +248,7 @@ class Objects(Generic[T]):
 
     async def delete_one(
         self,
-        filter: Optional[Expression | dict[Any, Any]] = None,
+        filter: Optional[Filter] = None,
     ) -> MongoDeleteResult:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
@@ -247,7 +257,7 @@ class Objects(Generic[T]):
 
     async def delete_many(
         self,
-        filter: Optional[Expression | dict[Any, Any]] = None,
+        filter: Optional[Filter] = None,
     ) -> MongoDeleteResult:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
@@ -256,7 +266,7 @@ class Objects(Generic[T]):
 
     async def update_one(
         self,
-        filter: Expression | dict[Any, Any],
+        filter: Filter,
         update: Mapping[str, Any] | list[Mapping[str, Any]],
         upsert: bool = False,
     ) -> MongoUpdateResult:
@@ -271,7 +281,7 @@ class Objects(Generic[T]):
 
     async def update_many(
         self,
-        filter: Expression | dict[Any, Any],
+        filter: Filter,
         update: Mapping[str, Any] | list[Mapping[str, Any]],
         upsert: bool = False,
     ) -> MongoUpdateResult:
@@ -286,7 +296,7 @@ class Objects(Generic[T]):
 
     async def count_documents(
         self,
-        filter: Expression | dict[Any, Any],
+        filter: Filter,
     ) -> int:
         # Just for IDE display method docs
         collection: MongoCollection = self.table.__collection__
@@ -319,7 +329,7 @@ class Objects(Generic[T]):
 
 @dataclasses.dataclass
 class DeleteMany:
-    filter: Expression | dict[Any, Any]
+    filter: Filter
 
     def to_mongo(self) -> MongoDeleteMany:
         return MongoDeleteMany(translate_filter(self.filter))
@@ -327,7 +337,7 @@ class DeleteMany:
 
 @dataclasses.dataclass
 class DeleteOne:
-    filter: Expression | dict[Any, Any]
+    filter: Filter
 
     def to_mongo(self) -> MongoDeleteOne:
         return MongoDeleteOne(translate_filter(self.filter))
@@ -343,7 +353,7 @@ class InsertOne(Generic[T]):
 
 @dataclasses.dataclass
 class ReplaceOne(Generic[T]):
-    filter: Expression | dict[Any, Any]
+    filter: Filter
     replacement: T
 
     def to_mongo(self) -> MongoReplaceOne:
@@ -354,7 +364,7 @@ class ReplaceOne(Generic[T]):
 
 @dataclasses.dataclass
 class UpdateMany:
-    filter: Expression | dict[Any, Any]
+    filter: Filter
     update: Mapping[str, Any] | list[Mapping[str, Any]]
     upsert: bool = False
 
@@ -366,7 +376,7 @@ class UpdateMany:
 
 @dataclasses.dataclass
 class UpdateOne:
-    filter: Expression | dict[Any, Any]
+    filter: Filter
     update: Mapping[str, Any] | list[Mapping[str, Any]]
     upsert: bool = False
 

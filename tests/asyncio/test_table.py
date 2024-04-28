@@ -24,6 +24,7 @@ class User(MongoTable):
     tags: mongo.ListField[str]
     wallet: mongo.EmbeddedField[Wallet]
     children: mongo.ListField[User]
+    extra: mongo.DictField = mongo.DictField(default=dict)
 
 
 User.__lazy_init_fields__()
@@ -59,6 +60,10 @@ User.__lazy_init_fields__()
         (
             User.children._.age >= 18,
             "CompareExpression(field=children.age, operator='>=', arg=18)",
+        ),
+        (
+            User.extra == {"a": "b"},
+            "CompareExpression(field=extra, operator='==', arg={'a': 'b'})",
         ),
     ],
 )
@@ -127,3 +132,18 @@ def test_empty_field():
     user = User.load({}, partial=True)
     assert not hasattr(user, "name")
     assert hasattr(user, "_id")
+
+
+def test_dict_field():
+    user = User.load(
+        {
+            "name": "Aber",
+            "age": 18,
+            "tags": ["a", "b"],
+            "wallet": {"balance": 100},
+            "children": [],
+            "extra": {"a": "b"},
+        }
+    )
+    assert user.extra == {"a": "b"}
+    assert user.dump(user)["extra"] == {"a": "b"}

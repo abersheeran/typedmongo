@@ -171,6 +171,15 @@ class DecimalField(Field[decimal.Decimal]):
     marshamallow: fields.Field = fields.Decimal(required=True, allow_none=False)
 
 
+@dataclasses.dataclass(eq=False)
+class DictField(Field[dict]):
+    """
+    Dict field
+    """
+
+    marshamallow: fields.Field = fields.Dict(required=True, allow_none=False)
+
+
 @dataclasses.dataclass
 class FieldNameProxy(Generic[TypeTable]):
     prefix: HasFieldName
