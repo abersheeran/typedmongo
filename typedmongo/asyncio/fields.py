@@ -25,7 +25,6 @@ from typedmongo.marshamallow import MarshamallowObjectId
 if TYPE_CHECKING:
     from .table import Table
 
-A = TypeVar("A")
 TypeTable = TypeVar("TypeTable", bound=type["Table"])
 T = TypeVar("T", bound="Table")
 TypeTableOrAny = TypeVar("TypeTableOrAny", bound=type["Table"] | Any)
@@ -92,16 +91,15 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
             message = "{0} has no attribute '{1}'".format(instance, self._name)
             raise AttributeError(message)
 
-    @classmethod
-    def get_field_type(cls) -> type[FieldType]:
-        if hasattr(cls, "__field_type__"):
-            return cls.__field_type__  # type: ignore
-        for origin_base in cls.__orig_bases__:  # type: ignore
+    def get_field_type(self) -> type[FieldType]:
+        if hasattr(self, "__field_type__"):
+            return self.__field_type__  # type: ignore
+        for origin_base in self.__orig_bases__:  # type: ignore
             origin_class = get_origin(origin_base)
             if isinstance(origin_class, type) and issubclass(origin_class, Field):
-                cls.__field_type__ = generic_type = get_args(origin_base)[0]
+                self.__field_type__ = generic_type = get_args(origin_base)[0]
                 return generic_type
-        raise RuntimeError(f"Cannot get field type for {cls}")
+        raise RuntimeError(f"Cannot get field type for {self}")
 
     def load(self, value: Any, *, partial: bool = False) -> FieldType:
         return value
@@ -223,6 +221,9 @@ class EmbeddedField(Generic[T], Field[T]):
             self.schema.__lazy_init_fields__()
         return super().__set_name__(owner, name)
 
+    def get_field_type(self) -> type[T]:
+        return self.schema
+
 
 @dataclasses.dataclass(eq=False)
 class ListFieldNameProxy(Generic[TypeTableOrAny], OrderByMixin, CompareMixin):
@@ -249,55 +250,58 @@ class ListFieldNameProxy(Generic[TypeTableOrAny], OrderByMixin, CompareMixin):
 
 
 @dataclasses.dataclass(eq=False)
-class ListField(Generic[A], Field[list[A]]):
+class ListField(Generic[FieldType], Field[list[FieldType]]):
     """
     List field
     """
 
-    _: ListFieldNameProxy[type[A]] = dataclasses.field(init=False)
+    _: ListFieldNameProxy[type[FieldType]] = dataclasses.field(init=False)
 
-    type_or_schema: type[A]
+    field: Field[FieldType]
 
-    def __getitem__(self, index: int) -> type[A]:
-        return ListFieldNameProxy(index, self, self.type_or_schema)  # type: ignore
+    def __getitem__(self, index: int) -> type[FieldType]:
+        return ListFieldNameProxy(index, self, self.field.get_field_type())  # type: ignore
 
     def __post_init__(self):
-        self._ = ListFieldNameProxy(None, self, self.type_or_schema)
+        self._ = ListFieldNameProxy(None, self, self.field.get_field_type())  # type: ignore
 
-        from .table import Table
+        self.marshamallow = fields.List(self.field.marshamallow)  # type: ignore
 
-        if issubclass(self.type_or_schema, Table):
-            self.marshamallow = fields.List(
-                fields.Nested(lambda: self.type_or_schema.__schema__)  # type: ignore
-            )
+        if isinstance(self.field, EmbeddedField):
+            self.marshamallow = fields.List(self.field.marshamallow)
 
-            def load(value: Any, *, partial: bool = False) -> list[A]:
-                return [
-                    self.type_or_schema.load(item, partial=partial)  # type: ignore
-                    for item in value
-                ]
+            def load(value: Any, *, partial: bool = False) -> list[FieldType]:
+                return [self.field.load(item, partial=partial) for item in value]  # type: ignore
 
-            def dump(value: list[A]) -> list[dict[str, Any]]:
-                return [self.type_or_schema.dump(item) for item in value]  # type: ignore
+            def dump(value: list[FieldType]) -> list[dict[str, Any]]:
+                return [self.field.dump(item) for item in value]  # type: ignore
 
             self.load = load
             self.dump = dump
-        else:
-            self.marshamallow = fields.List(
-                {
-                    int: fields.Integer(required=True, allow_none=False),
-                    float: fields.Float(required=True, allow_none=False),
-                    bool: fields.Boolean(required=True, allow_none=False),
-                    str: fields.String(required=True, allow_none=False),
-                    datetime: fields.DateTime(required=True, allow_none=False),
-                }[self.type_or_schema]  # type: ignore
-            )
 
-    def __set_name__(self, owner: type[Table], name: str) -> None:
-        from .table import Table
+    def get_field_type(self) -> type[list[FieldType]]:
+        return list[self.field.get_field_type()]  # type: ignore
 
-        if issubclass(self.type_or_schema, Table) and not issubclass(
-            self.type_or_schema, owner
-        ):
-            self.type_or_schema.__lazy_init_fields__()
-        return super().__set_name__(owner, name)
+
+def type_to_field(type_: type) -> Field:
+    from .table import Table
+
+    if type_ is str:
+        return StringField()
+    if type_ is int:
+        return IntegerField()
+    if type_ is float:
+        return FloatField()
+    if type_ is bool:
+        return BooleanField()
+    if type_ is datetime:
+        return DateTimeField()
+    if type_ is decimal.Decimal:
+        return DecimalField()
+    if type_ is ObjectId:
+        return ObjectIdField()
+    if issubclass(type_, Table):
+        return EmbeddedField(type_)
+    if get_origin(type_) is list:
+        return ListField(type_to_field(get_args(type_)[0]))
+    raise ValueError(f"Cannot convert type {type_} to field")

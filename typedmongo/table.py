@@ -19,7 +19,7 @@ from typing_extensions import Self, dataclass_transform
 from typedmongo.exceptions import TableDefineError
 
 from .client import Manager
-from .fields import Field
+from .fields import Field, ListField, type_to_field
 
 
 def snake_case(name: str) -> str:
@@ -130,7 +130,9 @@ class TableMetaClass(type):
                 if isinstance(value, type) and issubclass(value, Field)
             },
             **{
-                name: origin_class(*get_args(value))
+                name: origin_class(type_to_field(get_args(value)[0]))
+                if issubclass(origin_class, ListField)
+                else origin_class(*get_args(value))
                 for name, value in inspect.get_annotations(cls, eval_str=True).items()
                 if (origin_class := get_origin(value))
                 and isinstance(origin_class, type)
