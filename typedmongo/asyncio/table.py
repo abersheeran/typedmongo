@@ -38,6 +38,7 @@ class Index:
         Field
         | Sequence[tuple[Field, int | str | Mapping[str, Any]]]
         | Mapping[Field, Any]
+        | Mapping[str, Any]
     )
 
     name: Optional[str] = None
@@ -51,7 +52,10 @@ class Index:
         if isinstance(self.keys, Field):
             keys = self.keys.field_name
         elif isinstance(self.keys, Mapping):
-            keys = {field.field_name: value for field, value in self.keys.items()}
+            keys = {
+                field.field_name if isinstance(field, Field) else field: value
+                for field, value in self.keys.items()
+            }
         else:
             keys = [(field.field_name, value) for field, value in self.keys]
 
@@ -160,8 +164,26 @@ class TableMetaClass(type):
                 )
             )
 
-        for name, value in kwargs.items():
+        for name, field in cls.__fields__.items():
+            if name in kwargs:
+                value = kwargs.pop(name)
+            else:
+                if field.default is None:
+                    continue
+                default_value = field.default
+                if callable(default_value):
+                    value = default_value()
+                else:
+                    value = default_value
             setattr(instance, name, value)
+
+        if kwargs:
+            raise TypeError(
+                "{class_name}() got unexpected keyword arguments '{unexpected}'".format(
+                    class_name=cls.__name__,
+                    unexpected="', '".join(kwargs.keys()),
+                )
+            )
 
         return instance
 

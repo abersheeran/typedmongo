@@ -160,8 +160,26 @@ class TableMetaClass(type):
                 )
             )
 
-        for name, value in kwargs.items():
+        for name, field in cls.__fields__.items():
+            if name in kwargs:
+                value = kwargs.pop(name)
+            else:
+                if field.default is None:
+                    continue
+                default_value = field.default
+                if callable(default_value):
+                    value = default_value()
+                else:
+                    value = default_value
             setattr(instance, name, value)
+
+        if kwargs:
+            raise TypeError(
+                "{class_name}() got unexpected keyword arguments '{unexpected}'".format(
+                    class_name=cls.__name__,
+                    unexpected="', '".join(kwargs.keys()),
+                )
+            )
 
         return instance
 

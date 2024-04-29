@@ -99,7 +99,7 @@ def test_field_default():
     user = User(
         name="Aber", age=18, tags=["a", "b"], wallet=Wallet(balance=100), children=[]
     )
-    assert not hasattr(user, "_id")
+    assert hasattr(user, "_id")
     assert isinstance(user.dump(user)["_id"], str)
 
 
