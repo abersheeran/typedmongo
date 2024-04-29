@@ -223,6 +223,9 @@ class Table(metaclass=TableMetaClass):
 
     @classmethod
     def dump(cls, instance: Self) -> dict[str, Any]:
+        """
+        Dump the instance to jsonable dict.
+        """
         dumped = {
             key: getattr(instance.__fields__[key], "dump")(value)
             for key, value in instance.__dict__.items()
@@ -234,4 +237,10 @@ class Table(metaclass=TableMetaClass):
         return []
 
     def to_mongo(self) -> dict[str, Any]:
-        return self.dump(self)
+        """
+        Dump the instance to dict for mongo.
+        """
+        return {
+            key: getattr(self.__fields__[key], "to_mongo")(value)
+            for key, value in self.__dict__.items()
+        }

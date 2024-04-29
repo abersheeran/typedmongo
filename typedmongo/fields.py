@@ -107,6 +107,9 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
     def dump(self, value: FieldType) -> Any:
         return value
 
+    def to_mongo(self, value: FieldType) -> Any:
+        return value
+
 
 @dataclasses.dataclass(eq=False)
 class ObjectIdField(Field[ObjectId]):
@@ -222,8 +225,12 @@ class EmbeddedField(Generic[T], Field[T]):
         def dump(value: T) -> dict[str, Any]:
             return self.schema.dump(value)
 
+        def to_mongo(value: T) -> dict[str, Any]:
+            return self.schema.to_mongo(value)
+
         self.load = load
         self.dump = dump
+        self.to_mongo = to_mongo
 
     def __set_name__(self, owner: type[Table], name: str) -> None:
         if not issubclass(self.schema, owner):
@@ -285,8 +292,12 @@ class ListField(Generic[FieldType], Field[list[FieldType]]):
             def dump(value: list[FieldType]) -> list[dict[str, Any]]:
                 return [self.field.dump(item) for item in value]  # type: ignore
 
+            def to_mongo(value: list[FieldType]) -> list[dict[str, Any]]:
+                return [self.field.to_mongo(item) for item in value]  # type: ignore
+
             self.load = load
             self.dump = dump
+            self.to_mongo = to_mongo
 
     def get_field_type(self) -> type[list[FieldType]]:
         return list[self.field.get_field_type()]  # type: ignore
