@@ -117,7 +117,9 @@ class ObjectIdField(Field[ObjectId]):
     ObjectId field
     """
 
-    marshamallow: fields.Field = MarshamallowObjectId(required=True, allow_none=False)
+    marshamallow: MarshamallowObjectId = dataclasses.field(
+        default_factory=lambda: MarshamallowObjectId(required=True, allow_none=False)
+    )
 
 
 @dataclasses.dataclass(eq=False)
@@ -126,7 +128,9 @@ class StringField(Field[str]):
     String field
     """
 
-    marshamallow: fields.Field = fields.String(required=True, allow_none=False)
+    marshamallow: fields.String = dataclasses.field(
+        default_factory=lambda: fields.String(required=True, allow_none=False)
+    )
 
 
 @dataclasses.dataclass(eq=False)
@@ -135,7 +139,9 @@ class IntegerField(Field[int]):
     Integer field
     """
 
-    marshamallow: fields.Field = fields.Integer(required=True, allow_none=False)
+    marshamallow: fields.Integer = dataclasses.field(
+        default_factory=lambda: fields.Integer(required=True, allow_none=False)
+    )
 
 
 @dataclasses.dataclass(eq=False)
@@ -144,7 +150,9 @@ class FloatField(Field[float]):
     Float field
     """
 
-    marshamallow: fields.Field = fields.Float(required=True, allow_none=False)
+    marshamallow: fields.Float = dataclasses.field(
+        default_factory=lambda: fields.Float(required=True, allow_none=False)
+    )
 
 
 @dataclasses.dataclass(eq=False)
@@ -153,7 +161,9 @@ class BooleanField(Field[bool]):
     Boolean field
     """
 
-    marshamallow: fields.Field = fields.Boolean(required=True, allow_none=False)
+    marshamallow: fields.Boolean = dataclasses.field(
+        default_factory=lambda: fields.Boolean(required=True, allow_none=False)
+    )
 
 
 @dataclasses.dataclass(eq=False)
@@ -162,7 +172,9 @@ class DateTimeField(Field[datetime]):
     DateTime field
     """
 
-    marshamallow: fields.Field = MarshamallowDateTime(required=True, allow_none=False)
+    marshamallow: MarshamallowDateTime = dataclasses.field(
+        default_factory=lambda: MarshamallowDateTime(required=True, allow_none=False)
+    )
 
 
 @dataclasses.dataclass(eq=False)
@@ -171,7 +183,9 @@ class DecimalField(Field[decimal.Decimal]):
     Decimal field
     """
 
-    marshamallow: fields.Field = fields.Decimal(required=True, allow_none=False)
+    marshamallow: fields.Decimal = dataclasses.field(
+        default_factory=lambda: fields.Decimal(required=True, allow_none=False)
+    )
 
 
 @dataclasses.dataclass(eq=False)
@@ -180,7 +194,9 @@ class DictField(Field[dict]):
     Dict field
     """
 
-    marshamallow: fields.Field = fields.Dict(required=True, allow_none=False)
+    marshamallow: fields.Dict = dataclasses.field(
+        default_factory=lambda: fields.Dict(required=True, allow_none=False)
+    )
 
 
 @dataclasses.dataclass
