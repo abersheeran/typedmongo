@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from bson import ObjectId
@@ -16,3 +17,12 @@ class MarshamallowObjectId(fields.Field):
             return ObjectId(value)
         except (InvalidId, TypeError):
             raise ValidationError("Invalid ObjectId.")
+
+
+class MarshamallowDateTime(fields.DateTime):
+    def _deserialize(
+        self, value: str | datetime, attr: str | None, data: Any, **kwargs
+    ):
+        if isinstance(value, datetime):
+            return value
+        return super()._deserialize(value, attr, data, **kwargs)

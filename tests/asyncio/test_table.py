@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import uuid
 
 import pytest
@@ -23,6 +24,9 @@ class User(MongoTable):
     age: mongo.IntegerField
     tags: mongo.ListField[str]
     wallet: mongo.EmbeddedField[Wallet]
+    created_at: mongo.DateTimeField = mongo.DateTimeField(
+        default=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
     children: mongo.ListField[User]
     extra: mongo.DictField = mongo.DictField(default=dict)
 
@@ -83,6 +87,7 @@ def test_field_default():
         }
     )
     assert isinstance(user._id, str)
+    assert isinstance(user.created_at, datetime.datetime)
 
     user = User.load(
         {
@@ -95,12 +100,14 @@ def test_field_default():
         partial=True,
     )
     assert isinstance(user._id, str)
+    assert isinstance(user.created_at, datetime.datetime)
 
     user = User(
         name="Aber", age=18, tags=["a", "b"], wallet=Wallet(balance=100), children=[]
     )
     assert hasattr(user, "_id")
     assert isinstance(user.dump(user)["_id"], str)
+    assert isinstance(user.created_at, datetime.datetime)
 
 
 def test_recursion_field():
@@ -147,3 +154,8 @@ def test_dict_field():
     )
     assert user.extra == {"a": "b"}
     assert user.dump(user)["extra"] == {"a": "b"}
+
+
+def test_datetime_field():
+    user = User.load(dict(created_at=datetime.datetime.now()), partial=True)
+    assert isinstance(user.created_at, datetime.datetime)

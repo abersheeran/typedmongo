@@ -20,7 +20,7 @@ from marshmallow import fields
 from typing_extensions import Self
 
 from typedmongo.expressions import CompareMixin, HasFieldName, OrderByMixin
-from typedmongo.marshamallow import MarshamallowObjectId
+from typedmongo.marshamallow import MarshamallowDateTime, MarshamallowObjectId
 
 if TYPE_CHECKING:
     from .table import Table
@@ -162,7 +162,7 @@ class DateTimeField(Field[datetime]):
     DateTime field
     """
 
-    marshamallow: fields.Field = fields.DateTime(required=True, allow_none=False)
+    marshamallow: fields.Field = MarshamallowDateTime(required=True, allow_none=False)
 
 
 @dataclasses.dataclass(eq=False)

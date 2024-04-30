@@ -38,6 +38,7 @@ class Index:
         Field
         | Sequence[tuple[Field, int | str | Mapping[str, Any]]]
         | Mapping[Field, Any]
+        | Mapping[str, Any]
     )
 
     name: Optional[str] = None
@@ -51,7 +52,10 @@ class Index:
         if isinstance(self.keys, Field):
             keys = self.keys.field_name
         elif isinstance(self.keys, Mapping):
-            keys = {field.field_name: value for field, value in self.keys.items()}
+            keys = {
+                field.field_name if isinstance(field, Field) else field: value
+                for field, value in self.keys.items()
+            }
         else:
             keys = [(field.field_name, value) for field, value in self.keys]
 
