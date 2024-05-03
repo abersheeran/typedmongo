@@ -121,20 +121,18 @@ class Objects(Generic[T]):
     def __init__(self, table: type[T]) -> None:
         self.table = table
 
-    def insert_one(self, document: T) -> DocumentId:
-        # Just for IDE display method docs
-        collection: MongoCollection = self.table.__collection__
+    @property
+    def collection(self) -> MongoCollection:
+        return self.table.__collection__
 
-        insert_result = collection.insert_one(document.to_mongo())
+    def insert_one(self, document: T) -> DocumentId:
+        insert_result = self.collection.insert_one(document.to_mongo())
         return insert_result.inserted_id
 
     def insert_many(
         self, *documents: T, ordered: bool = True
     ) -> list[DocumentId]:
-        # Just for IDE display method docs
-        collection: MongoCollection = self.table.__collection__
-
-        insert_result = collection.insert_many(
+        insert_result = self.collection.insert_many(
             [document.to_mongo() for document in documents], ordered=ordered
         )
         return insert_result.inserted_ids
@@ -148,10 +146,7 @@ class Objects(Generic[T]):
         sort: Optional[Sort] = None,
         allow_disk_use: Optional[bool] = None,
     ) -> Iterable[T]:
-        # Just for IDE display method docs
-        collection: MongoCollection = self.table.__collection__
-
-        for document in collection.find(
+        for document in self.collection.find(
             filter=translate_filter(filter),
             projection=translate_projection(projection),
             skip=skip,
@@ -169,10 +164,7 @@ class Objects(Generic[T]):
         sort: Optional[Sort] = None,
         allow_disk_use: Optional[bool] = None,
     ) -> T | None:
-        # Just for IDE display method docs
-        collection: MongoCollection = self.table.__collection__
-
-        document = collection.find_one(
+        document = self.collection.find_one(
             filter=translate_filter(filter),
             projection=translate_projection(projection),
             skip=skip,
@@ -189,9 +181,7 @@ class Objects(Generic[T]):
         projection: Optional[Projection] = None,
         sort: Optional[Sort] = None,
     ) -> T | None:
-        collection: MongoCollection = self.table.__collection__
-
-        document = collection.find_one_and_delete(
+        document = self.collection.find_one_and_delete(
             filter=translate_filter(filter),
             projection=translate_projection(projection),
             sort=translate_sort(sort),
@@ -209,9 +199,7 @@ class Objects(Generic[T]):
         upsert: bool = False,
         after_document: bool = False,
     ) -> T | None:
-        collection: MongoCollection = self.table.__collection__
-
-        document = collection.find_one_and_replace(
+        document = self.collection.find_one_and_replace(
             filter=translate_filter(filter),
             replacement=replacement.to_mongo(),
             projection=translate_projection(projection),
@@ -232,9 +220,7 @@ class Objects(Generic[T]):
         upsert: bool = False,
         after_document: bool = False,
     ) -> T | None:
-        collection: MongoCollection = self.table.__collection__
-
-        document = collection.find_one_and_update(
+        document = self.collection.find_one_and_update(
             filter=translate_filter(filter),
             update=update,
             projection=translate_projection(projection),
@@ -250,19 +236,13 @@ class Objects(Generic[T]):
         self,
         filter: Optional[Filter] = None,
     ) -> MongoDeleteResult:
-        # Just for IDE display method docs
-        collection: MongoCollection = self.table.__collection__
-
-        return collection.delete_one(translate_filter(filter))
+        return self.collection.delete_one(translate_filter(filter))
 
     def delete_many(
         self,
         filter: Optional[Filter] = None,
     ) -> MongoDeleteResult:
-        # Just for IDE display method docs
-        collection: MongoCollection = self.table.__collection__
-
-        return collection.delete_many(translate_filter(filter))
+        return self.collection.delete_many(translate_filter(filter))
 
     def update_one(
         self,
@@ -270,10 +250,7 @@ class Objects(Generic[T]):
         update: Mapping[str, Any] | list[Mapping[str, Any]],
         upsert: bool = False,
     ) -> MongoUpdateResult:
-        # Just for IDE display method docs
-        collection: MongoCollection = self.table.__collection__
-
-        return collection.update_one(
+        return self.collection.update_one(
             translate_filter(filter),
             update,
             upsert=upsert,
@@ -285,10 +262,7 @@ class Objects(Generic[T]):
         update: Mapping[str, Any] | list[Mapping[str, Any]],
         upsert: bool = False,
     ) -> MongoUpdateResult:
-        # Just for IDE display method docs
-        collection: MongoCollection = self.table.__collection__
-
-        return collection.update_many(
+        return self.collection.update_many(
             translate_filter(filter),
             update,
             upsert=upsert,
@@ -298,10 +272,7 @@ class Objects(Generic[T]):
         self,
         filter: Filter,
     ) -> int:
-        # Just for IDE display method docs
-        collection: MongoCollection = self.table.__collection__
-
-        return collection.count_documents(translate_filter(filter))
+        return self.collection.count_documents(translate_filter(filter))
 
     def bulk_write(
         self,
@@ -313,18 +284,9 @@ class Objects(Generic[T]):
         | UpdateOne,
         ordered: bool = True,
     ) -> MongoBlukWriteResult:
-        # Just for IDE display method docs
-        collection: MongoCollection = self.table.__collection__
-
-        return collection.bulk_write(
+        return self.collection.bulk_write(
             [r.to_mongo() for r in requests], ordered=ordered
         )
-
-    def drop(self) -> None:
-        # Just for IDE display method docs
-        collection: MongoCollection = self.table.__collection__
-
-        collection.drop()
 
 
 @dataclasses.dataclass

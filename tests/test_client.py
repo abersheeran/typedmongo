@@ -42,7 +42,7 @@ def init_models():
         User,
     )
     yield
-    User.objects.drop()
+    User.objects.collection.drop()
 
 
 def test_use_objects_in_instance():

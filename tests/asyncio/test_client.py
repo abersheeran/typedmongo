@@ -42,7 +42,7 @@ async def init_models():
         User,
     )
     yield
-    await User.objects.drop()
+    await User.objects.collection.drop()
 
 
 async def test_use_objects_in_instance():
