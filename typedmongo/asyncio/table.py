@@ -154,39 +154,6 @@ class TableMetaClass(type):
         cls.__schema__ = cls.__create_schema__(cls.__name__, cls.__fields__)
         return fields
 
-    def __call__(cls, **kwargs: Any):
-        instance = super().__call__()
-
-        if instance.__abstract__:
-            raise RuntimeError(
-                "The class {} cannot be instantiated, because it's __abstract__ is True.".format(
-                    cls.__name__
-                )
-            )
-
-        for name, field in cls.__fields__.items():
-            if name in kwargs:
-                value = kwargs.pop(name)
-            else:
-                if field.default is None:
-                    continue
-                default_value = field.default
-                if callable(default_value):
-                    value = default_value()
-                else:
-                    value = default_value
-            setattr(instance, name, value)
-
-        if kwargs:
-            raise TypeError(
-                "{class_name}() got unexpected keyword arguments '{unexpected}'".format(
-                    class_name=cls.__name__,
-                    unexpected="', '".join(kwargs.keys()),
-                )
-            )
-
-        return instance
-
     def __setattr__(cls, name, value):
         if name == "__abstract__":
             raise AttributeError(
@@ -199,6 +166,35 @@ class Table(metaclass=TableMetaClass):
     __abstract__ = True
 
     objects = Manager()
+
+    def __init__(self, **kwargs):
+        if self.__abstract__:
+            raise RuntimeError(
+                "The class {} cannot be instantiated, because it's __abstract__ is True.".format(
+                    self.__class__.__name__
+                )
+            )
+
+        for name, field in self.__class__.__fields__.items():
+            if name in kwargs:
+                value = kwargs.pop(name)
+            else:
+                if field.default is None:
+                    continue
+                default_value = field.default
+                if callable(default_value):
+                    value = default_value()
+                else:
+                    value = default_value
+            setattr(self, name, value)
+
+        if kwargs:
+            raise TypeError(
+                "{class_name}() got unexpected keyword arguments '{unexpected}'".format(
+                    class_name=self.__class__.__name__,
+                    unexpected="', '".join(kwargs.keys()),
+                )
+            )
 
     def __repr__(self) -> str:
         return "{class_name}({fields})".format(
