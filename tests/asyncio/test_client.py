@@ -6,22 +6,13 @@ import pytest
 from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
 
 import typedmongo.asyncio as mongo
-from typedmongo.marshamallow import MarshamallowObjectId
-
-
-class MongoTable(mongo.Table):
-    __abstract__ = True
-
-    _id: mongo.ObjectIdField = mongo.ObjectIdField(
-        marshamallow=MarshamallowObjectId(required=False)
-    )
 
 
 class Wallet(mongo.Table):
     balance: mongo.DecimalField
 
 
-class User(MongoTable):
+class User(mongo.MongoTable):
     name: mongo.StringField
     age: mongo.IntegerField
     tags: mongo.ListField[str]

@@ -20,7 +20,7 @@ from .fields import (
     ObjectIdField,
     StringField,
 )
-from .table import Index, Table
+from .table import Index, MongoTable, Table
 
 __all__ = [
     "DeleteMany",
@@ -31,6 +31,7 @@ __all__ = [
     "UpdateOne",
     "initial_collections",
     "Index",
+    "MongoTable",
     "Table",
     "BooleanField",
     "DateTimeField",

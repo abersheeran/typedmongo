@@ -21,17 +21,13 @@ Usage examples trump all usage documentation. So please look at the Example belo
 from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
 
 import typedmongo.asyncio as mongo
-from typedmongo.marshamallow import MarshamallowObjectId
 
 
 class Wallet(mongo.Table):
     balance: mongo.DecimalField
 
 
-class User(mongo.Table):
-    _id: mongo.ObjectIdField = mongo.ObjectIdField(
-        marshamallow=MarshamallowObjectId(required=False)
-    )
+class User(mongo.MongoTable):
     name: mongo.StringField
     age: mongo.IntegerField
     tags: mongo.ListField[str]

@@ -17,9 +17,10 @@ from pymongo import IndexModel
 from typing_extensions import Self, dataclass_transform
 
 from typedmongo.exceptions import TableDefineError
+from typedmongo.marshamallow import MarshamallowObjectId
 
 from .client import Manager
-from .fields import Field, ListField, type_to_field
+from .fields import Field, ListField, ObjectIdField, type_to_field
 
 
 def snake_case(name: str) -> str:
@@ -253,3 +254,11 @@ class Table(metaclass=TableMetaClass):
             key: getattr(self.__fields__[key], "to_mongo")(value)
             for key, value in self.__dict__.items()
         }
+
+
+class MongoTable(Table):
+    __abstract__ = True
+
+    _id: ObjectIdField = ObjectIdField(
+        marshamallow=MarshamallowObjectId(required=False)
+    )
