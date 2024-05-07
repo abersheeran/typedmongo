@@ -231,16 +231,15 @@ class Table(metaclass=TableMetaClass):
         }
         return cls(**loaded)
 
-    @classmethod
-    def dump(cls, instance: Self) -> dict[str, Any]:
+    def dump(self: Self) -> dict[str, Any]:
         """
         Dump the instance to jsonable dict.
         """
         dumped = {
-            key: getattr(instance.__fields__[key], "dump")(value)
-            for key, value in instance.__dict__.items()
+            key: getattr(self.__fields__[key], "dump")(value)
+            for key, value in self.__dict__.items()
         }
-        return cls.__schema__.dump(dumped)  # type: ignore
+        return self.__schema__.dump(dumped)  # type: ignore
 
     @classmethod
     def indexes(cls) -> list[Index]:

@@ -106,7 +106,7 @@ def test_field_default():
         name="Aber", age=18, tags=["a", "b"], wallet=Wallet(balance=100), children=[]
     )
     assert hasattr(user, "_id")
-    assert isinstance(user.dump(user)["_id"], str)
+    assert isinstance(User.dump(user)["_id"], str)
     assert isinstance(user.created_at, datetime.datetime)
 
 
@@ -153,7 +153,7 @@ def test_dict_field():
         }
     )
     assert user.extra == {"a": "b"}
-    assert user.dump(user)["extra"] == {"a": "b"}
+    assert user.dump()["extra"] == {"a": "b"}
 
 
 def test_datetime_field():
