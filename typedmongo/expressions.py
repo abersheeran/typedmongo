@@ -42,14 +42,15 @@ class Expression:
             return NotImplemented
         return CombineExpression("AND", self, other)
 
-    # Should we support it?
-    # def __rand__(self, other: Expression) -> CombineExpression:
-    #     """
-    #     other & self
-    #     """
-    #     if not isinstance(other, Expression):
-    #         return NotImplemented
-    #     return CombineExpression("AND", other, self)
+    def __rand__(self, other: Expression | None) -> Expression:
+        """
+        other & self
+        """
+        if other is None:
+            return self
+        if not isinstance(other, Expression):
+            return NotImplemented
+        return CombineExpression("AND", other, self)
 
     def __or__(self, other: Expression) -> CombineExpression:
         """
@@ -59,14 +60,15 @@ class Expression:
             return NotImplemented
         return CombineExpression("OR", self, other)
 
-    # Should we support it?
-    # def __ror__(self, other: Expression) -> CombineExpression:
-    #     """
-    #     other | self
-    #     """
-    #     if not isinstance(other, Expression):
-    #         return NotImplemented
-    #     return CombineExpression("OR", other, self)
+    def __ror__(self, other: Expression | None) -> Expression:
+        """
+        other | self
+        """
+        if other is None:
+            return self
+        if not isinstance(other, Expression):
+            return NotImplemented
+        return CombineExpression("OR", other, self)
 
 
 class CompareMixin(HasFieldName):

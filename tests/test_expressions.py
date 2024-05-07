@@ -92,6 +92,10 @@ field = Field("name")
                 CompareExpression(field, "<", 35),
             ),
         ),
+        (
+            None & (field > 18),
+            CompareExpression(field, ">", 18),
+        ),
     ],
 )
 def test_compile_expressions(expression, expected):
