@@ -191,3 +191,20 @@ def test_filter_expressions(documents_id, expression):
 def test_projection(documents_id, projection):
     user = User.objects.find_one(User.age == 18, projection=projection)
     assert user is not None
+
+
+@pytest.mark.parametrize(
+    "shortcut",
+    [
+        mongo.Contains("be"),
+        mongo.Contains("bE", case_sensitive=False),
+        mongo.StartsWith("A"),
+        mongo.StartsWith("a", case_sensitive=False),
+        mongo.EndsWith("r"),
+        mongo.EndsWith("R", case_sensitive=False),
+    ],
+)
+def test_shortcut(documents_id, shortcut):
+    user = User.objects.find_one(User.name == shortcut)
+    assert user is not None
+    assert user.name == "Aber"

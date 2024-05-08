@@ -1,3 +1,5 @@
+from typedmongo.shortcuts import Contains, EndsWith, StartsWith
+
 from .client import (
     DeleteMany,
     DeleteOne,
@@ -23,6 +25,9 @@ from .fields import (
 from .table import Index, MongoTable, Table
 
 __all__ = [
+    "Contains",
+    "StartsWith",
+    "EndsWith",
     "DeleteMany",
     "DeleteOne",
     "InsertOne",
