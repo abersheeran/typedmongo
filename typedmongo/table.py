@@ -60,13 +60,14 @@ class Index:
         else:
             keys = [(field.field_name, value) for field, value in self.keys]
 
-        parameters = dataclasses.asdict(self)
-        del parameters["keys"]
-        if parameters["partialFilterExpression"] is None:
-            del parameters["partialFilterExpression"]
-        if parameters["expireAfterSeconds"] is None:
-            del parameters["expireAfterSeconds"]
-        return IndexModel(keys=keys, **parameters)
+        # Don't use asdict, because it will raise RecursionError
+        kwargs = {
+            key: value
+            for key, value in self.__dict__.items()
+            if value is not None and key != "keys"
+        }
+
+        return IndexModel(keys=keys, **kwargs)
 
 
 @dataclass_transform(eq_default=False, kw_only_default=True)
