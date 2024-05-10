@@ -21,11 +21,22 @@ def main(just_check: bool = False):
                 "from motor.motor_asyncio import AsyncIOMotorDatabase",
                 "from pymongo.database import Database",
             )
+            .replace(
+                "from motor.motor_asyncio import AsyncIOMotorClientSession as MongoSession",
+                "from pymongo.client_session import ClientSession as MongoSession",
+            )
             .replace("async def ", "def ")
             .replace("await ", "")
             .replace("async for ", "for ")
             .replace("async with ", "with ")
             .replace("AsyncIterable", "Iterable")
+            .replace(
+                "AsyncGenerator[MongoSession, None]",
+                "Generator[MongoSession, None, None]",
+            )
+            .replace("AsyncGenerator[None, None]", "Generator[None, None, None]")
+            .replace("AsyncGenerator", "Generator")
+            .replace("asynccontextmanager", "contextmanager")
         )
         if just_check:
             if content != new_file_path.read_text():

@@ -147,3 +147,23 @@ async def main():
 
 - `+Table.field`: Ascending
 - `-Table.field`: Descending
+
+## Objects
+
+- `Table.objects`: The object manager of the table.
+  - `collection`: The collection of the table.
+  - `use_session`: Use session for the operations. (Use `contextvars`, so you don't need to pass the session to the function parameters)
+  - `use_transaction`: Use transaction for the operations.
+  - `insert_one`: Insert one document.
+  - `insert_many`: Insert many documents.
+  - `find`: Find many documents.
+  - `find_one`: Find one document.
+  - `find_one_and_update`: Find one and update.
+  - `find_one_and_replace`: Find one and replace.
+  - `find_one_and_delete`: Find one and delete.
+  - `delete_one`: Delete one document.
+  - `delete_many`: Delete many documents.
+  - `update_one`: Update one document.
+  - `update_many`: Update many documents.
+  - `count_documents`: Count documents.
+  - `bulk_write`: Bulk write operations.

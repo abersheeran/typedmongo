@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import dataclasses
 import decimal
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from typing import (
     TYPE_CHECKING,
     Any,
+    AsyncGenerator,
     AsyncIterable,
     Generic,
     Literal,
@@ -18,14 +21,19 @@ from typing import (
 
 from bson.codec_options import CodecOptions, TypeCodec, TypeRegistry
 from bson.decimal128 import Decimal128
+from pymongo.client_session import TransactionOptions
 from pymongo.operations import DeleteMany as MongoDeleteMany
 from pymongo.operations import DeleteOne as MongoDeleteOne
 from pymongo.operations import InsertOne as MongoInsertOne
 from pymongo.operations import ReplaceOne as MongoReplaceOne
 from pymongo.operations import UpdateMany as MongoUpdateMany
 from pymongo.operations import UpdateOne as MongoUpdateOne
+from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import _ServerMode
+from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
+    from motor.motor_asyncio import AsyncIOMotorClientSession as MongoSession
     from motor.motor_asyncio import AsyncIOMotorCollection as MongoCollection
     from motor.motor_asyncio import AsyncIOMotorDatabase as MongoDatabase
     from pymongo.results import BulkWriteResult as MongoBlukWriteResult
@@ -116,6 +124,8 @@ translate_sort = (
     ]
 )
 
+SESSION: ContextVar[Optional[MongoSession]] = ContextVar("session", default=None)
+
 
 class Objects(Generic[T]):
     def __init__(self, table: type[T]) -> None:
@@ -125,15 +135,68 @@ class Objects(Generic[T]):
     def collection(self) -> MongoCollection:
         return self.table.__collection__
 
+    @asynccontextmanager
+    async def use_session(
+        self,
+        causal_consistency: bool | None = None,
+        default_transaction_options: TransactionOptions | None = None,
+        snapshot: bool | None = False,
+    ) -> AsyncGenerator[MongoSession, None]:
+        """
+        Use a session to execute operations, for example:
+
+        ```python
+        async with Table.objects.use_session() as session:
+            await Table.objects.insert_one(document)
+        """
+        async with await self.collection.database.client.start_session(
+            causal_consistency=causal_consistency,
+            default_transaction_options=default_transaction_options,
+            snapshot=snapshot,
+        ) as session:
+            token = SESSION.set(session)
+            try:
+                yield session
+            finally:
+                SESSION.reset(token)
+
+    @asynccontextmanager
+    async def use_transaction(
+        self,
+        read_concern: Optional[ReadConcern] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_preference: Optional[_ServerMode] = None,
+        max_commit_time_ms: Optional[int] = None,
+    ) -> AsyncGenerator[None, None]:
+        """
+        Use a transaction to execute operations, for example:
+
+        ```python
+        async with Table.objects.use_transaction():
+            await Table.objects.insert_one(document)
+        """
+        async with self.use_session() as session:
+            async with session.start_transaction(
+                read_concern=read_concern,
+                write_concern=write_concern,
+                read_preference=read_preference,
+                max_commit_time_ms=max_commit_time_ms,
+            ):
+                yield
+
     async def insert_one(self, document: T) -> DocumentId:
-        insert_result = await self.collection.insert_one(document.to_mongo())
+        insert_result = await self.collection.insert_one(
+            document.to_mongo(), session=SESSION.get()
+        )
         return insert_result.inserted_id
 
     async def insert_many(
         self, *documents: T, ordered: bool = True
     ) -> list[DocumentId]:
         insert_result = await self.collection.insert_many(
-            [document.to_mongo() for document in documents], ordered=ordered
+            [document.to_mongo() for document in documents],
+            ordered=ordered,
+            session=SESSION.get(),
         )
         return insert_result.inserted_ids
 
@@ -153,6 +216,7 @@ class Objects(Generic[T]):
             limit=limit,
             sort=translate_sort(sort),
             allow_disk_use=allow_disk_use,
+            session=SESSION.get(),
         ):
             yield self.table.load(document, partial=True)
 
@@ -170,6 +234,7 @@ class Objects(Generic[T]):
             skip=skip,
             sort=translate_sort(sort),
             allow_disk_use=allow_disk_use,
+            session=SESSION.get(),
         )
         if document is None:
             return None
@@ -185,6 +250,7 @@ class Objects(Generic[T]):
             filter=translate_filter(filter),
             projection=translate_projection(projection),
             sort=translate_sort(sort),
+            session=SESSION.get(),
         )
         if document is None:
             return None
@@ -206,6 +272,7 @@ class Objects(Generic[T]):
             sort=translate_sort(sort),
             upsert=upsert,
             return_document=after_document,
+            session=SESSION.get(),
         )
         if document is None:
             return None
@@ -227,6 +294,7 @@ class Objects(Generic[T]):
             sort=translate_sort(sort),
             upsert=upsert,
             return_document=after_document,
+            session=SESSION.get(),
         )
         if document is None:
             return None
@@ -236,13 +304,19 @@ class Objects(Generic[T]):
         self,
         filter: Optional[Filter] = None,
     ) -> MongoDeleteResult:
-        return await self.collection.delete_one(translate_filter(filter))
+        return await self.collection.delete_one(
+            translate_filter(filter),
+            session=SESSION.get(),
+        )
 
     async def delete_many(
         self,
         filter: Optional[Filter] = None,
     ) -> MongoDeleteResult:
-        return await self.collection.delete_many(translate_filter(filter))
+        return await self.collection.delete_many(
+            translate_filter(filter),
+            session=SESSION.get(),
+        )
 
     async def update_one(
         self,
@@ -254,6 +328,7 @@ class Objects(Generic[T]):
             translate_filter(filter),
             update,
             upsert=upsert,
+            session=SESSION.get(),
         )
 
     async def update_many(
@@ -266,13 +341,17 @@ class Objects(Generic[T]):
             translate_filter(filter),
             update,
             upsert=upsert,
+            session=SESSION.get(),
         )
 
     async def count_documents(
         self,
         filter: Filter,
     ) -> int:
-        return await self.collection.count_documents(translate_filter(filter))
+        return await self.collection.count_documents(
+            translate_filter(filter),
+            session=SESSION.get(),
+        )
 
     async def bulk_write(
         self,
@@ -285,7 +364,9 @@ class Objects(Generic[T]):
         ordered: bool = True,
     ) -> MongoBlukWriteResult:
         return await self.collection.bulk_write(
-            [r.to_mongo() for r in requests], ordered=ordered
+            [r.to_mongo() for r in requests],
+            ordered=ordered,
+            session=SESSION.get(),
         )
 
 

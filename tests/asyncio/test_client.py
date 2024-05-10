@@ -208,3 +208,10 @@ async def test_shortcut(documents_id, shortcut):
     user = await User.objects.find_one(User.name == shortcut)
     assert user is not None
     assert user.name == "Aber"
+
+
+async def test_transaction(documents_id):
+    async with User.objects.use_session() as session:
+        await User.objects.update_many({}, {"$set": {"age": 20}})
+        await User.objects.delete_many(User.name == "Aber")
+        await User.objects.insert_one(User.load({"name": "Aber", "age": 18}))
