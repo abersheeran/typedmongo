@@ -18,6 +18,9 @@ Usage examples trump all usage documentation. So please look at the Example belo
 <summary>Example</summary>
 
 ```python
+import datetime
+from typing import Literal
+
 from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
 
 import typedmongo.asyncio as mongo
@@ -29,6 +32,7 @@ class Wallet(mongo.Table):
 
 class User(mongo.MongoTable):
     name: mongo.StringField
+    gender: mongo.LiteralField[Literal["m", "f"]]
     age: mongo.IntegerField
     tags: mongo.ListField[str]
     wallet: mongo.EmbeddedField[Wallet]
@@ -50,6 +54,7 @@ async def main():
         User.load(
             {
                 "name": "Aber",
+                "gender": "m",
                 "age": 18,
                 "tags": ["a", "b"],
                 "wallet": {"balance": 100},
@@ -123,6 +128,7 @@ async def main():
 - `DictField`
 - `EmbeddedField`
 - `ListField`
+- `LiteralField`
 
 ### Conditional expressions
 

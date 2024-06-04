@@ -19,6 +19,7 @@ from .fields import (
     FloatField,
     IntegerField,
     ListField,
+    LiteralField,
     ObjectIdField,
     StringField,
 )
@@ -47,6 +48,7 @@ __all__ = [
     "FloatField",
     "IntegerField",
     "ListField",
+    "LiteralField",
     "ObjectIdField",
     "StringField",
 ]

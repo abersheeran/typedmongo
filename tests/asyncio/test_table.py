@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import uuid
+from typing import Literal
 
 import pytest
 
@@ -21,6 +22,7 @@ class Wallet(mongo.Table):
 
 class User(MongoTable):
     name: mongo.StringField
+    gender: mongo.LiteralField[Literal["m", "f"]]
     age: mongo.IntegerField
     tags: mongo.ListField[str]
     wallet: mongo.EmbeddedField[Wallet]
@@ -80,6 +82,7 @@ def test_field_default():
     user = User.load(
         {
             "name": "Aber",
+            "gender": "m",
             "age": 18,
             "tags": ["a", "b"],
             "wallet": {"balance": 100},
@@ -103,7 +106,12 @@ def test_field_default():
     assert isinstance(user.created_at, datetime.datetime)
 
     user = User(
-        name="Aber", age=18, tags=["a", "b"], wallet=Wallet(balance=100), children=[]
+        name="Aber",
+        gender="m",
+        age=18,
+        tags=["a", "b"],
+        wallet=Wallet(balance=100),
+        children=[],
     )
     assert hasattr(user, "_id")
     assert isinstance(User.dump(user)["_id"], str)
@@ -114,12 +122,14 @@ def test_recursion_field():
     user = User.load(
         {
             "name": "Aber",
+            "gender": "m",
             "age": 18,
             "tags": ["a", "b"],
             "wallet": {"balance": 100},
             "children": [
                 {
                     "name": "Yue",
+                    "gender": "f",
                     "age": 18,
                     "tags": ["a", "b"],
                     "wallet": {"balance": 100},
@@ -145,6 +155,7 @@ def test_dict_field():
     user = User.load(
         {
             "name": "Aber",
+            "gender": "m",
             "age": 18,
             "tags": ["a", "b"],
             "wallet": {"balance": 100},
@@ -159,3 +170,8 @@ def test_dict_field():
 def test_datetime_field():
     user = User.load(dict(created_at=datetime.datetime.now()), partial=True)
     assert isinstance(user.created_at, datetime.datetime)
+
+
+def test_literal_field():
+    user = User.load(dict(gender="m"), partial=True)
+    assert user.gender == "m"

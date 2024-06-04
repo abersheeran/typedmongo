@@ -20,7 +20,11 @@ from marshmallow import fields
 from typing_extensions import Self
 
 from typedmongo.expressions import CompareMixin, HasFieldName, OrderByMixin
-from typedmongo.marshamallow import MarshamallowDateTime, MarshamallowObjectId
+from typedmongo.marshamallow import (
+    MarshamallowDateTime,
+    MarshamallowLiteral,
+    MarshamallowObjectId,
+)
 
 if TYPE_CHECKING:
     from .table import Table
@@ -120,6 +124,20 @@ class ObjectIdField(Field[ObjectId]):
     marshamallow: MarshamallowObjectId = dataclasses.field(
         default_factory=lambda: MarshamallowObjectId(required=True, allow_none=False)
     )
+
+
+@dataclasses.dataclass(eq=False)
+class LiteralField(Field[FieldType]):
+    """
+    Literal field
+    """
+
+    literal: type[FieldType]
+
+    def __post_init__(self):
+        self.marshamallow = MarshamallowLiteral(
+            self.literal, required=True, allow_none=False
+        )
 
 
 @dataclasses.dataclass(eq=False)
