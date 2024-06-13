@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
+
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     # Solve TypeError: Cannot create a consistent method resolution
@@ -42,7 +44,13 @@ class Expression:
             return NotImplemented
         return CombineExpression("AND", self, other)
 
-    def __rand__(self, other: Expression | None) -> Expression:
+    @overload
+    def __rand__(self, other: None) -> Self: ...
+
+    @overload
+    def __rand__(self, other: Expression) -> CombineExpression: ...
+
+    def __rand__(self, other):
         """
         other & self
         """
@@ -60,7 +68,13 @@ class Expression:
             return NotImplemented
         return CombineExpression("OR", self, other)
 
-    def __ror__(self, other: Expression | None) -> Expression:
+    @overload
+    def __ror__(self, other: None) -> Self: ...
+
+    @overload
+    def __ror__(self, other: Expression) -> CombineExpression: ...
+
+    def __ror__(self, other):
         """
         other | self
         """
