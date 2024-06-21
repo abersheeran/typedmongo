@@ -69,7 +69,7 @@ def initial_collections(db: MongoDatabase, *tables: type[Table]) -> None:
         table.__lazy_init_fields__()
         table.__database__ = db
         type_registry = TypeRegistry([DecimalCodec()])
-        codec_options = CodecOptions(type_registry=type_registry)
+        codec_options = CodecOptions(type_registry=type_registry, tz_aware=True)
         table.__collection__ = collection = db.get_collection(
             table.__collection_name__, codec_options=codec_options
         )
