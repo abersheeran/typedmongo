@@ -20,6 +20,11 @@ class Wallet(mongo.Table):
     balance: mongo.DecimalField
 
 
+class Social(mongo.Table):
+    site: mongo.StringField
+    user: mongo.StringField
+
+
 class User(MongoTable):
     name: mongo.StringField
     gender: mongo.LiteralField[Literal["m", "f"]]
@@ -30,6 +35,9 @@ class User(MongoTable):
         default=lambda: datetime.datetime.now(datetime.timezone.utc)
     )
     children: mongo.ListField[User]
+    socials: mongo.ListField[Social] = mongo.ListField(
+        mongo.EmbeddedField(Social), default=list
+    )
     extra: mongo.DictField = mongo.DictField(default=dict)
 
 
@@ -76,6 +84,21 @@ User.__lazy_init_fields__()
 def test_expression(expression, repr_str):
     assert isinstance(expression, Expression)
     assert repr(expression) == repr_str
+
+
+def test_list_field():
+    user = User.load(
+        {
+            "name": "Aber",
+            "gender": "m",
+            "age": 18,
+            "tags": ["a", "b"],
+            "wallet": {"balance": 100},
+            "children": [],
+            "socials": [{"site": "github.com", "user": "abersheeran"}],
+        }
+    )
+    assert user.socials == [Social(site="github.com", user="abersheeran")]
 
 
 def test_field_default():

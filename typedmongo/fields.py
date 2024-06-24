@@ -333,6 +333,11 @@ class ListField(Generic[FieldType], Field[list[FieldType]]):
             self.dump = dump
             self.to_mongo = to_mongo
 
+    def __set_name__(self, owner: type[Table], name: str) -> None:
+        if isinstance(self.field, EmbeddedField):
+            self.field.schema.__lazy_init_fields__()
+        return super().__set_name__(owner, name)
+
     def get_field_type(self) -> type[list[FieldType]]:
         return list[self.field.get_field_type()]  # type: ignore
 

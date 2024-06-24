@@ -70,7 +70,7 @@ class Index:
         return IndexModel(keys=keys, **kwargs)
 
 
-@dataclass_transform(eq_default=False, kw_only_default=True)
+@dataclass_transform(kw_only_default=True)
 class TableMetaClass(type):
     if TYPE_CHECKING:
         __abstract__: bool
@@ -207,6 +207,11 @@ class Table(metaclass=TableMetaClass):
                 if name in self.__dict__
             ),
         )
+
+    def __eq__(self, value: object) -> bool:
+        return isinstance(value, self.__class__) and {
+            key: self.__dict__.get(key, None) for key in self.__fields__.keys()
+        } == {key: value.__dict__.get(key, None) for key in value.__fields__.keys()}
 
     @staticmethod
     def __create_schema__(name: str, fields: dict[str, Field]) -> Schema:
