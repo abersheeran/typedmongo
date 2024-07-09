@@ -149,6 +149,14 @@ async def main():
 - `~((Table.field == value) & (Table.field == value))`
 - `~((Table.field == value) | (Table.field == value))`
 
+Sometime, you maybe need use raw query, you can use `RawExpression` to do that.
+
+```python
+from typedmongo.expressions import RawExpression
+
+User.objects.find(RawExpression({"field_name": {"$mongo_command": value}}) & User.age > 18)
+```
+
 ### Sort expressions
 
 - `+Table.field`: Ascending

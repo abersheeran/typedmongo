@@ -7,6 +7,7 @@ from typedmongo.expressions import (
     CompareExpression,
     CompareMixin,
     NotExpression,
+    RawExpression,
 )
 
 
@@ -95,6 +96,18 @@ field = Field("name")
         (
             None & (field > 18),
             CompareExpression(field, ">", 18),
+        ),
+        (
+            (field > 18) & None,
+            CompareExpression(field, ">", 18),
+        ),
+        (
+            RawExpression({"name": "Aber"}) | (field > 18),
+            CombineExpression(
+                "OR",
+                RawExpression({"name": "Aber"}),
+                CompareExpression(field, ">", 18),
+            ),
         ),
     ],
 )

@@ -36,10 +36,18 @@ class Expression:
             case _:
                 raise NotImplementedError
 
-    def __and__(self, other: Expression) -> CombineExpression:
+    @overload
+    def __and__(self, other: None) -> Self: ...
+
+    @overload
+    def __and__(self, other: Expression) -> CombineExpression: ...
+
+    def __and__(self, other):
         """
         self & other
         """
+        if other is None:
+            return self
         if not isinstance(other, Expression):
             return NotImplemented
         return CombineExpression("AND", self, other)
@@ -60,10 +68,18 @@ class Expression:
             return NotImplemented
         return CombineExpression("AND", other, self)
 
-    def __or__(self, other: Expression) -> CombineExpression:
+    @overload
+    def __or__(self, other: None) -> Self: ...
+
+    @overload
+    def __or__(self, other: Expression) -> CombineExpression: ...
+
+    def __or__(self, other):
         """
         self | other
         """
+        if other is None:
+            return self
         if not isinstance(other, Expression):
             return NotImplemented
         return CombineExpression("OR", self, other)
@@ -83,6 +99,11 @@ class Expression:
         if not isinstance(other, Expression):
             return NotImplemented
         return CombineExpression("OR", other, self)
+
+
+@dataclasses.dataclass
+class RawExpression(Expression):
+    raw: dict[str, Any]
 
 
 class CompareMixin(HasFieldName):
@@ -160,6 +181,8 @@ class NotExpression(Expression):
 
 def compile_expression(expr: Expression) -> dict[str, Any]:
     match expr:
+        case RawExpression(raw):
+            return raw
         case CompareExpression(field, "==", arg):
             return {field.field_name: arg}
         case CompareExpression(field, "!=", arg):
