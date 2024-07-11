@@ -1,6 +1,8 @@
 from datetime import datetime
-from typing import Any, get_args
+from typing import Any, List, get_args
 
+import marshmallow.error_store
+import marshmallow.exceptions
 from bson import ObjectId
 from bson.errors import InvalidId
 from marshmallow import ValidationError, fields
@@ -37,3 +39,31 @@ class MarshamallowLiteral(fields.Field):
         if value not in self.enum:
             raise ValidationError(f"Value must be {self.enum}")
         return value
+
+
+class MarshamallowUnion(fields.Field):
+    def __init__(self, fields: List[fields.Field], **kwargs: Any):
+        self._candidate_fields = fields
+        super().__init__(**kwargs)
+
+    def _serialize(self, value: Any, attr: str | None, obj: Any, **kwargs):
+        fields = self._candidate_fields
+
+        for candidate_field in fields:
+            try:
+                return candidate_field.serialize(value, attr, obj, **kwargs)
+            except ValidationError:
+                pass
+
+        raise ValidationError(
+            f"Unable to serialize value {value} with any of the candidate fields"
+        )
+
+    def _deserialize(self, value: Any, attr: str, data: Any, **kwargs: Any):
+        errors = []
+        for candidate_field in self._candidate_fields:
+            try:
+                return candidate_field.deserialize(value, attr, data, **kwargs)
+            except marshmallow.exceptions.ValidationError as exc:
+                errors.append(exc.messages)
+        raise ValidationError(message=errors, field_name=attr)
