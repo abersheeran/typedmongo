@@ -172,7 +172,7 @@ class Objects(Generic[T]):
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
         max_commit_time_ms: Optional[int] = None,
-    ) -> Generator[None, None, None]:
+    ) -> Generator[MongoSession, None, None]:
         """
         Use a transaction to execute operations, for example:
 
@@ -187,7 +187,7 @@ class Objects(Generic[T]):
                 read_preference=read_preference,
                 max_commit_time_ms=max_commit_time_ms,
             ):
-                yield
+                yield session
 
     def insert_one(self, document: T) -> DocumentId:
         insert_result = self.collection.insert_one(
