@@ -133,7 +133,12 @@ class Objects(Generic[T]):
 
     @property
     def collection(self) -> MongoCollection:
-        return self.table.__collection__
+        try:
+            return self.table.__collection__
+        except AttributeError:
+            raise AttributeError(
+                f"Table '{self.table.__name__}' has not been initialized"
+            )
 
     @contextmanager
     def use_session(
