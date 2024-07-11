@@ -10,6 +10,7 @@ from typing import (
     Generic,
     Optional,
     TypeVar,
+    Union,
     get_args,
     get_origin,
     overload,
@@ -24,6 +25,7 @@ from typedmongo.marshamallow import (
     MarshamallowDateTime,
     MarshamallowLiteral,
     MarshamallowObjectId,
+    MarshamallowUnion,
 )
 
 if TYPE_CHECKING:
@@ -340,6 +342,21 @@ class ListField(Generic[FieldType], Field[list[FieldType]]):
 
     def get_field_type(self) -> type[list[FieldType]]:
         return list[self.field.get_field_type()]  # type: ignore
+
+
+class UnionField(Field[FieldType]):
+    union: FieldType
+
+
+class C(Table):
+    name: StringField
+
+
+class T:
+    union: UnionField[Union[int, C]]
+
+
+T.union.name
 
 
 def type_to_field(type_: type) -> Field:
