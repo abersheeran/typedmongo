@@ -100,6 +100,9 @@ class Expression:
             return NotImplemented
         return CombineExpression("OR", other, self)
 
+    def compile(self) -> dict[str, Any]:
+        return compile_expression(self)
+
 
 @dataclasses.dataclass
 class RawExpression(Expression):
