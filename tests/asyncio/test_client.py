@@ -8,11 +8,11 @@ from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
 import typedmongo.asyncio as mongo
 
 
-class Wallet(mongo.Table):
+class Wallet(mongo.Document):
     balance: mongo.DecimalField
 
 
-class User(mongo.MongoTable):
+class User(mongo.MongoDocument):
     name: mongo.StringField
     age: mongo.IntegerField
     tags: mongo.ListField[str]
@@ -211,7 +211,7 @@ async def test_shortcut(documents_id, shortcut):
 
 
 async def test_transaction(documents_id):
-    async with User.objects.use_session() as session:
+    async with User.objects.use_session():
         await User.objects.update_many({}, {"$set": {"age": 20}})
         await User.objects.delete_many(User.name == "Aber")
         await User.objects.insert_one(User.load({"name": "Aber", "age": 18}))

@@ -27,11 +27,11 @@ from typedmongo.marshamallow import (
 )
 
 if TYPE_CHECKING:
-    from .table import Table
+    from .table import Document
 
-TypeTable = TypeVar("TypeTable", bound=type["Table"])
-T = TypeVar("T", bound="Table")
-TypeTableOrAny = TypeVar("TypeTableOrAny", bound=type["Table"] | Any)
+TypeDocument = TypeVar("TypeDocument", bound=type["Document"])
+T = TypeVar("T", bound="Document")
+TypeDocumentOrAny = TypeVar("TypeDocumentOrAny", bound=type["Document"] | Any)
 FieldType = TypeVar("FieldType")
 
 
@@ -54,7 +54,7 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
     field_name: str = dataclasses.field(init=False)
     marshamallow: fields.Field = dataclasses.field(init=False)
 
-    def __set_name__(self, owner: type[Table], name: str) -> None:
+    def __set_name__(self, owner: type[Document], name: str) -> None:
         self._table = owner
         self._name = name
 
@@ -85,10 +85,10 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
             message = "{0} has no attribute '{1}'".format(instance, self._name)
             raise AttributeError(message) from None
 
-    def __set__(self, instance: Table, value: Any) -> None:
+    def __set__(self, instance: Document, value: Any) -> None:
         instance.__dict__[self._name] = value
 
-    def __delete__(self, instance: Table) -> None:
+    def __delete__(self, instance: Document) -> None:
         try:
             del instance.__dict__[self._name]
         except KeyError:
@@ -218,11 +218,11 @@ class DictField(Field[dict]):
 
 
 @dataclasses.dataclass
-class FieldNameProxy(Generic[TypeTable]):
+class FieldNameProxy(Generic[TypeDocument]):
     prefix: HasFieldName
-    t: TypeTable
+    t: TypeDocument
 
-    def __get__(self, instance, owner) -> TypeTable: ...
+    def __get__(self, instance, owner) -> TypeDocument: ...
 
     def __getattr__(self, name: str) -> FieldNameProxyString:
         try:
@@ -266,7 +266,7 @@ class EmbeddedField(Generic[T], Field[T]):
         self.dump = dump
         self.to_mongo = to_mongo
 
-    def __set_name__(self, owner: type[Table], name: str) -> None:
+    def __set_name__(self, owner: type[Document], name: str) -> None:
         if not issubclass(self.schema, owner):
             self.schema.__lazy_init_fields__()
         return super().__set_name__(owner, name)
@@ -276,10 +276,10 @@ class EmbeddedField(Generic[T], Field[T]):
 
 
 @dataclasses.dataclass(eq=False)
-class ListFieldNameProxy(Generic[TypeTableOrAny], OrderByMixin, CompareMixin):
+class ListFieldNameProxy(Generic[TypeDocumentOrAny], OrderByMixin, CompareMixin):
     number: int | None
     prefix: HasFieldName
-    t: TypeTableOrAny
+    t: TypeDocumentOrAny
 
     @property
     def field_name(self) -> str:
@@ -287,7 +287,7 @@ class ListFieldNameProxy(Generic[TypeTableOrAny], OrderByMixin, CompareMixin):
             return self.prefix.field_name
         return f"{self.prefix.field_name}.{self.number}"
 
-    def __get__(self, instance, owner) -> TypeTableOrAny: ...
+    def __get__(self, instance, owner) -> TypeDocumentOrAny: ...
 
     def __getattr__(self, name: str) -> FieldNameProxyString:
         try:
@@ -333,7 +333,7 @@ class ListField(Generic[FieldType], Field[list[FieldType]]):
             self.dump = dump
             self.to_mongo = to_mongo
 
-    def __set_name__(self, owner: type[Table], name: str) -> None:
+    def __set_name__(self, owner: type[Document], name: str) -> None:
         if isinstance(self.field, EmbeddedField):
             self.field.schema.__lazy_init_fields__()
         return super().__set_name__(owner, name)
@@ -343,7 +343,7 @@ class ListField(Generic[FieldType], Field[list[FieldType]]):
 
 
 def type_to_field(type_: type) -> Field:
-    from .table import Table
+    from .table import Document
 
     if type_ is str:
         return StringField()
@@ -359,7 +359,7 @@ def type_to_field(type_: type) -> Field:
         return DecimalField()
     if type_ is ObjectId:
         return ObjectIdField()
-    if issubclass(type_, Table):
+    if issubclass(type_, Document):
         return EmbeddedField(type_)
     if get_origin(type_) is list:
         return ListField(type_to_field(get_args(type_)[0]))

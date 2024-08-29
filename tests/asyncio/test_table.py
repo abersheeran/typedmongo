@@ -10,22 +10,22 @@ import typedmongo.asyncio as mongo
 from typedmongo.expressions import Expression
 
 
-class MongoTable(mongo.Table):
+class MongoDocument(mongo.Document):
     __abstract__ = True
 
     _id: mongo.StringField = mongo.StringField(default=lambda: uuid.uuid4().hex)
 
 
-class Wallet(mongo.Table):
+class Wallet(mongo.Document):
     balance: mongo.DecimalField
 
 
-class Social(mongo.Table):
+class Social(mongo.Document):
     site: mongo.StringField
     user: mongo.StringField
 
 
-class User(MongoTable):
+class User(MongoDocument):
     name: mongo.StringField
     gender: mongo.LiteralField[Literal["m", "f"]]
     age: mongo.IntegerField

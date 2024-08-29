@@ -8,11 +8,11 @@ from pymongo import MongoClient
 import typedmongo as mongo
 
 
-class Wallet(mongo.Table):
+class Wallet(mongo.Document):
     balance: mongo.DecimalField
 
 
-class User(mongo.MongoTable):
+class User(mongo.MongoDocument):
     name: mongo.StringField
     age: mongo.IntegerField
     tags: mongo.ListField[str]
@@ -211,7 +211,7 @@ def test_shortcut(documents_id, shortcut):
 
 
 def test_transaction(documents_id):
-    with User.objects.use_session() as session:
+    with User.objects.use_session():
         User.objects.update_many({}, {"$set": {"age": 20}})
         User.objects.delete_many(User.name == "Aber")
         User.objects.insert_one(User.load({"name": "Aber", "age": 18}))

@@ -40,13 +40,13 @@ if TYPE_CHECKING:
     from pymongo.results import DeleteResult as MongoDeleteResult
     from pymongo.results import UpdateResult as MongoUpdateResult
 
-    from .table import Table
+    from .table import Document
 
 from typedmongo.expressions import Expression, OrderBy, compile_expression
 
 from .fields import Field
 
-T = TypeVar("T", bound="Table")
+T = TypeVar("T", bound="Document")
 
 
 class DecimalCodec(TypeCodec):
@@ -64,7 +64,7 @@ class DecimalCodec(TypeCodec):
         return value.to_decimal()
 
 
-def initial_collections(db: MongoDatabase, *tables: type[Table]) -> None:
+def initial_collections(db: MongoDatabase, *tables: type[Document]) -> None:
     for table in tables:
         table.__lazy_init_fields__()
         table.__database__ = db
@@ -137,7 +137,7 @@ class Objects(Generic[T]):
             return self.table.__collection__
         except AttributeError:
             raise AttributeError(
-                f"Table '{self.table.__name__}' has not been initialized"
+                f"Document '{self.table.__name__}' has not been initialized"
             )
 
     @contextmanager
@@ -151,8 +151,8 @@ class Objects(Generic[T]):
         Use a session to execute operations, for example:
 
         ```python
-        with Table.objects.use_session() as session:
-            Table.objects.insert_one(document)
+        with Document.objects.use_session() as session:
+            Document.objects.insert_one(document)
         """
         with self.collection.database.client.start_session(
             causal_consistency=causal_consistency,
@@ -177,8 +177,8 @@ class Objects(Generic[T]):
         Use a transaction to execute operations, for example:
 
         ```python
-        with Table.objects.use_transaction():
-            Table.objects.insert_one(document)
+        with Document.objects.use_transaction():
+            Document.objects.insert_one(document)
         """
         with self.use_session() as session:
             with session.start_transaction(

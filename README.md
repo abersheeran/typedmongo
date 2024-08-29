@@ -26,11 +26,11 @@ from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
 import typedmongo.asyncio as mongo
 
 
-class Wallet(mongo.Table):
+class Wallet(mongo.Document):
     balance: mongo.DecimalField
 
 
-class User(mongo.MongoTable):
+class User(mongo.MongoDocument):
     name: mongo.StringField
     gender: mongo.LiteralField[Literal["m", "f"]]
     age: mongo.IntegerField
@@ -113,10 +113,10 @@ async def main():
 
 </details>
 
-### Table
+### Document
 
-- `Table.load`: Load data from dict to instance, and validate the data.
-- `Table.dump`: Dump the instance to jsonable dict.
+- `Document.load`: Load data from dict to instance, and validate the data.
+- `Document.dump`: Dump the instance to jsonable dict.
 
 ### Field
 
@@ -134,20 +134,20 @@ async def main():
 
 #### Comparison expressions
 
-- `Table.field == value`
-- `Table.field != value`
-- `Table.field > value`
-- `Table.field >= value`
-- `Table.field < value`
-- `Table.field <= value`
+- `Document.field == value`
+- `Document.field != value`
+- `Document.field > value`
+- `Document.field >= value`
+- `Document.field < value`
+- `Document.field <= value`
 
 #### Logical expressions
 
-- `(Table.field == value) & (Table.field == value)`
-- `(Table.field == value) | (Table.field == value)`
-- `~(Table.field == value)`
-- `~((Table.field == value) & (Table.field == value))`
-- `~((Table.field == value) | (Table.field == value))`
+- `(Document.field == value) & (Document.field == value)`
+- `(Document.field == value) | (Document.field == value)`
+- `~(Document.field == value)`
+- `~((Document.field == value) & (Document.field == value))`
+- `~((Document.field == value) | (Document.field == value))`
 
 Sometime, you maybe need use raw query, you can use `RawExpression` to do that.
 
@@ -159,12 +159,12 @@ User.objects.find(RawExpression({"field_name": {"$mongo_command": value}}) & Use
 
 ### Sort expressions
 
-- `+Table.field`: Ascending
-- `-Table.field`: Descending
+- `+Document.field`: Ascending
+- `-Document.field`: Descending
 
 ## Objects
 
-- `Table.objects`: The object manager of the table.
+- `Document.objects`: The object manager of the table.
   - `collection`: The collection of the table.
   - `use_session`: Use session for the operations. (Use `contextvars`, so you don't need to pass the session to the function parameters)
   - `use_transaction`: Use transaction for the operations.

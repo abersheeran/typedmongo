@@ -16,7 +16,7 @@ from marshmallow import Schema
 from pymongo import IndexModel
 from typing_extensions import Self, dataclass_transform
 
-from typedmongo.exceptions import TableDefineError
+from typedmongo.exceptions import DocumentDefineError
 from typedmongo.marshamallow import MarshamallowObjectId
 
 from .client import Manager
@@ -71,7 +71,7 @@ class Index:
 
 
 @dataclass_transform(kw_only_default=True)
-class TableMetaClass(type):
+class DocumentMetaClass(type):
     if TYPE_CHECKING:
         __abstract__: bool
         __database__: Any
@@ -86,12 +86,12 @@ class TableMetaClass(type):
 
     def __new__(cls, name, bases, namespace):
         if "_" in name:  # check error name. e.g. Status_Info
-            raise TableDefineError(
-                "Table class name cannot have '_': {name}".format(name=name)
+            raise DocumentDefineError(
+                "Document class name cannot have '_': {name}".format(name=name)
             )
         if not name[0].isupper():  # check error name. e.g. statusInfo
-            raise TableDefineError(
-                "Table class name must be upper letter in start: {name}".format(
+            raise DocumentDefineError(
+                "Document class name must be upper letter in start: {name}".format(
                     name=name
                 )
             )
@@ -112,7 +112,7 @@ class TableMetaClass(type):
                 [
                     base.__lazy_init_fields__()
                     for base in bases
-                    if isinstance(base, TableMetaClass)
+                    if isinstance(base, DocumentMetaClass)
                 ]
             ),
             {},
@@ -164,7 +164,7 @@ class TableMetaClass(type):
         return super().__setattr__(name, value)
 
 
-class Table(metaclass=TableMetaClass):
+class Document(metaclass=DocumentMetaClass):
     __abstract__ = True
 
     objects = Manager()
@@ -261,7 +261,7 @@ class Table(metaclass=TableMetaClass):
         }
 
 
-class MongoTable(Table):
+class MongoDocument(Document):
     __abstract__ = True
 
     _id: ObjectIdField = ObjectIdField(

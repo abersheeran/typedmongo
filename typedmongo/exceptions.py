@@ -1,10 +1,10 @@
-class TableDefineError(Exception):
+class DocumentDefineError(Exception):
     """
-    Table define error
+    Document define error
     """
 
 
-class TableDuplicateError(TableDefineError):
+class DocumentDuplicateError(DocumentDefineError):
     """
-    Table duplicate error
+    Document duplicate error
     """

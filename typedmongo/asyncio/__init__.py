@@ -23,7 +23,11 @@ from .fields import (
     ObjectIdField,
     StringField,
 )
-from .table import Index, MongoTable, Table
+from .table import Document, Index, MongoDocument
+
+# Alias for Document, for compatibility with older versions
+Table = Document
+MongoTable = MongoDocument
 
 __all__ = [
     "Contains",
@@ -37,8 +41,8 @@ __all__ = [
     "UpdateOne",
     "initial_collections",
     "Index",
-    "MongoTable",
-    "Table",
+    "MongoDocument",
+    "Document",
     "BooleanField",
     "DateTimeField",
     "DecimalField",
