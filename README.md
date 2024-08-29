@@ -115,8 +115,29 @@ async def main():
 
 ### Document
 
+Note: The `Document` must be initialized with `initial_collections` before it can be used.
+
 - `Document.load`: Load data from dict to instance, and validate the data.
 - `Document.dump`: Dump the instance to jsonable dict.
+
+#### Collection Name
+
+`Document.__collection_name__`: Normally, subclasses of Document will generate a collection_name based on the Class Name, but if you want to customize it, you can set `__collection_name__` when defining it.
+
+```python
+class APIKey(mongo.Document):
+    __collection_name__ = "api_key"
+```
+
+#### Raw Collection
+
+If you want to use functions such as `aggregate`, you can access pymongo's original `collection` object through `Document.objects.collection`.
+
+```python
+Document.objects.collection.aggregate([
+    {"$group": {"_id": "$field", "count": {"$sum": 1}}}
+])
+```
 
 ### Field
 
@@ -131,6 +152,15 @@ async def main():
 - `LiteralField`
 
 ### Conditional expressions
+
+If you want to use conditional expressions with methods like aggregate, you can call `expression.compile()` to get a mongo expression.
+
+```python
+Document.objects.collection.aggregate([
+    {"$match": (Document.age >= 18).compile()},
+    {"$group": {"_id": "$field", "count": {"$sum": 1}}},
+])
+```
 
 #### Comparison expressions
 
@@ -149,6 +179,8 @@ async def main():
 - `~((Document.field == value) & (Document.field == value))`
 - `~((Document.field == value) | (Document.field == value))`
 
+#### `RawExpression`
+
 Sometime, you maybe need use raw query, you can use `RawExpression` to do that.
 
 ```python
@@ -162,10 +194,14 @@ User.objects.find(RawExpression({"field_name": {"$mongo_command": value}}) & Use
 - `+Document.field`: Ascending
 - `-Document.field`: Descending
 
+```python
+User.objects.find(..., sort=[+User.age, -User.name])
+```
+
 ## Objects
 
-- `Document.objects`: The object manager of the table.
-  - `collection`: The collection of the table.
+- `Document.objects`: The object manager of the `Document`.
+  - `collection`: The collection of the `Document`.
   - `use_session`: Use session for the operations. (Use `contextvars`, so you don't need to pass the session to the function parameters)
   - `use_transaction`: Use transaction for the operations.
   - `insert_one`: Insert one document.
