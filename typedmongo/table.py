@@ -154,7 +154,7 @@ class DocumentMetaClass(type):
             field.__set_name__(cls, name)
 
         cls.__schema__ = cls.__create_schema__(cls.__name__, cls.__fields__)
-        return fields
+        return cls.__fields__
 
     def __setattr__(cls, name, value):
         if name == "__abstract__":

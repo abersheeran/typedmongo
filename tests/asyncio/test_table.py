@@ -198,3 +198,15 @@ def test_datetime_field():
 def test_literal_field():
     user = User.load(dict(gender="m"), partial=True)
     assert user.gender == "m"
+
+
+class UserWithRole(User):
+    role: mongo.LiteralField[Literal["admin", "user"]]
+
+
+UserWithRole.__lazy_init_fields__()
+
+
+def test_three_level_inheritance():
+    user = UserWithRole.load(dict(role="admin"), partial=True)
+    assert isinstance(user._id, str)
