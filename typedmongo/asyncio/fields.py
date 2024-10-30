@@ -347,16 +347,13 @@ class ListField(Generic[FieldType], Field[list[FieldType]]):
 class UnionField(Field[FieldType]):
     union: FieldType
 
+    def __post_init__(self):
+        union_type = self.get_field_type()
+        union_args = get_args(union_type)
 
-class C(Table):
-    name: StringField
-
-
-class T:
-    union: UnionField[Union[int, C]]
-
-
-T.union.name
+        self.marshamallow = MarshamallowUnion(
+            [type_to_field(arg).marshamallow for arg in union_args]
+        )
 
 
 def type_to_field(type_: type) -> Field:
