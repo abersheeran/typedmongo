@@ -261,6 +261,28 @@ class Objects(Generic[T]):
             return None
         return self.table.load(document, partial=True)
 
+    @overload
+    async def find_one_and_replace(
+        self,
+        filter: Filter,
+        replacement: T,
+        projection: Optional[Projection] = None,
+        sort: Optional[Sort] = None,
+        upsert: Literal[False] = False,
+        after_document: bool = False,
+    ) -> T | None: ...
+
+    @overload
+    async def find_one_and_replace(
+        self,
+        filter: Filter,
+        replacement: T,
+        projection: Optional[Projection] = None,
+        sort: Optional[Sort] = None,
+        upsert: Literal[True] = True,
+        after_document: bool = False,
+    ) -> T: ...
+
     async def find_one_and_replace(
         self,
         filter: Filter,
@@ -282,6 +304,28 @@ class Objects(Generic[T]):
         if document is None:
             return None
         return self.table.load(document, partial=True)
+
+    @overload
+    async def find_one_and_update(
+        self,
+        filter: Filter,
+        update: Mapping[str, Any] | list[Mapping[str, Any]],
+        projection: Optional[Projection] = None,
+        sort: Optional[Sort] = None,
+        upsert: Literal[False] = False,
+        after_document: bool = False,
+    ) -> T | None: ...
+
+    @overload
+    async def find_one_and_update(
+        self,
+        filter: Filter,
+        update: Mapping[str, Any] | list[Mapping[str, Any]],
+        projection: Optional[Projection] = None,
+        sort: Optional[Sort] = None,
+        upsert: Literal[True] = True,
+        after_document: bool = False,
+    ) -> T: ...
 
     async def find_one_and_update(
         self,
