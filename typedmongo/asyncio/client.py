@@ -29,7 +29,7 @@ from pymongo.operations import ReplaceOne as MongoReplaceOne
 from pymongo.operations import UpdateMany as MongoUpdateMany
 from pymongo.operations import UpdateOne as MongoUpdateOne
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import _ServerMode
+from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
@@ -170,7 +170,7 @@ class Objects(Generic[T]):
         self,
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
-        read_preference: Optional[_ServerMode] = None,
+        read_preference: _ServerMode = ReadPreference.PRIMARY,
         max_commit_time_ms: Optional[int] = None,
     ) -> AsyncGenerator[MongoSession, None]:
         """
