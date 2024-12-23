@@ -361,6 +361,11 @@ class UnionField(Field[FieldType]):
             allow_none=False,
         )
 
+    def __set_name__(self, owner: type[Document], name: str) -> None:
+        for arg in get_args(self.union):
+            type_to_field(arg).__set_name__(owner, name)
+        return super().__set_name__(owner, name)
+
     @property
     def field_type(self) -> type[FieldType]:
         return self.union
