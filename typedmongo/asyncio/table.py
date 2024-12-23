@@ -1,3 +1,4 @@
+import copy
 import dataclasses
 import inspect
 from functools import reduce
@@ -12,15 +13,20 @@ from typing import (
     get_origin,
 )
 
-from marshmallow import Schema
+from pydantic import BaseModel, create_model
 from pymongo import IndexModel
 from typing_extensions import Self, dataclass_transform
 
 from typedmongo.exceptions import DocumentDefineError
-from typedmongo.marshamallow import MarshamallowObjectId
 
 from .client import Manager
 from .fields import Field, ListField, ObjectIdField, type_to_field
+
+if TYPE_CHECKING:
+    from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler
+    from pydantic.json_schema import JsonSchemaValue
+    from pydantic_core import to_jsonable_python
+    from pydantic_core.core_schema import any_schema, no_info_after_validator_function
 
 
 def snake_case(name: str) -> str:
@@ -81,8 +87,8 @@ class DocumentMetaClass(type):
         __sfields__: dict[str, Field]
         __fields_loaded__: bool
         __fields__: dict[str, Field]
-        __create_schema__: Callable[[str, dict[str, Field]], Schema]
-        __schema__: Schema
+        __create_schema__: Callable[[str, dict[str, Field]], type[BaseModel]]
+        __schema__: type[BaseModel]
 
     def __new__(cls, name, bases, namespace):
         if "_" in name:  # check error name. e.g. Status_Info
@@ -213,29 +219,13 @@ class Document(metaclass=DocumentMetaClass):
             key: self.__dict__.get(key, None) for key in self.__fields__.keys()
         } == {key: value.__dict__.get(key, None) for key in value.__fields__.keys()}
 
-    @staticmethod
-    def __create_schema__(name: str, fields: dict[str, Field]) -> Schema:
-        schema_class = Schema.from_dict(
-            {name: field.marshamallow for name, field in fields.items()}, name=name
-        )
-        return schema_class(unknown="exclude")
-
     @classmethod
-    def load(
-        cls: type[Self], data: Mapping[str, Any], *, partial: bool = False
-    ) -> Self:
+    def load(cls: type[Self], data: Mapping[str, Any]) -> Self:
         """
         Load data from dict to instance, and validate the data.
-
-        :param data: The data to load.
-        :param partial: If True, allow partial data to load.
         """
-        validated: dict[str, Any] = cls.__schema__.load(data=data, partial=partial)  # type: ignore
-        loaded = {
-            key: getattr(cls.__fields__[key], "load")(value, partial=partial)
-            for key, value in validated.items()
-        }
-        return cls(**loaded)
+        validated: dict[str, Any] = cls.__schema__.model_validate(data).__dict__
+        return cls(**validated)
 
     def dump(self: Self) -> dict[str, Any]:
         """
@@ -245,7 +235,7 @@ class Document(metaclass=DocumentMetaClass):
             key: getattr(self.__fields__[key], "dump")(value)
             for key, value in self.__dict__.items()
         }
-        return self.__schema__.dump(dumped)  # type: ignore
+        return to_jsonable_python(dumped)
 
     @classmethod
     def indexes(cls) -> list[Index]:
@@ -259,6 +249,30 @@ class Document(metaclass=DocumentMetaClass):
             key: getattr(self.__fields__[key], "to_mongo")(value)
             for key, value in self.__dict__.items()
         }
+
+    @staticmethod
+    def __create_schema__(name: str, fields: dict[str, Field]) -> type[BaseModel]:
+        field_definitions: dict[str, Any] = {
+            name: field.field_type for name, field in fields.items()
+        }
+        schema_class = create_model(name, **field_definitions)
+        return schema_class
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, _source_type: Any, _handler: GetCoreSchemaHandler
+    ):
+        return no_info_after_validator_function(cls.load, any_schema())
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, schema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        return copy.deepcopy(
+            cls.__schema__.model_json_schema(
+                ref_template="#/components/schemas/{model}"
+            )
+        )
 
 
 class MongoDocument(Document):
