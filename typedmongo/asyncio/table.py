@@ -1,3 +1,4 @@
+import copy
 import dataclasses
 import inspect
 from functools import reduce
@@ -16,21 +17,16 @@ from pydantic import BaseModel, create_model
 from pymongo import IndexModel
 from typing_extensions import Self, dataclass_transform
 
-from typedmongo import pydantic_compatible
 from typedmongo.exceptions import DocumentDefineError
-from typedmongo.marshamallow import MarshamallowObjectId
 
 from .client import Manager
 from .fields import Field, ListField, ObjectIdField, type_to_field
 
-if not pydantic_compatible.IS_V1 and TYPE_CHECKING:
+if TYPE_CHECKING:
     from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler
     from pydantic.json_schema import JsonSchemaValue
-    from pydantic_core.core_schema import (
-        CoreSchema,
-        any_schema,
-        no_info_after_validator_function,
-    )
+    from pydantic_core import to_jsonable_python
+    from pydantic_core.core_schema import any_schema, no_info_after_validator_function
 
 
 def snake_case(name: str) -> str:
@@ -228,9 +224,7 @@ class Document(metaclass=DocumentMetaClass):
         """
         Load data from dict to instance, and validate the data.
         """
-        validated: dict[str, Any] = pydantic_compatible.validate_model(
-            cls.__schema__, data
-        )[1]
+        validated: dict[str, Any] = cls.__schema__.model_validate(data).__dict__
         return cls(**validated)
 
     def dump(self: Self) -> dict[str, Any]:
@@ -241,7 +235,7 @@ class Document(metaclass=DocumentMetaClass):
             key: getattr(self.__fields__[key], "dump")(value)
             for key, value in self.__dict__.items()
         }
-        return pydantic_compatible.to_jsonable_python(dumped)
+        return to_jsonable_python(dumped)
 
     @classmethod
     def indexes(cls) -> list[Index]:
@@ -259,33 +253,26 @@ class Document(metaclass=DocumentMetaClass):
     @staticmethod
     def __create_schema__(name: str, fields: dict[str, Field]) -> type[BaseModel]:
         field_definitions: dict[str, Any] = {
-            name: field.get_field_type() for name, field in fields.items()
+            name: field.field_type for name, field in fields.items()
         }
         schema_class = create_model(name, **field_definitions)
         return schema_class
 
-    if pydantic_compatible.IS_V1:
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, _source_type: Any, _handler: GetCoreSchemaHandler
+    ):
+        return no_info_after_validator_function(cls.load, any_schema())
 
-        @classmethod
-        def __get_validators__(cls):
-            yield cls.load
-
-        @classmethod
-        def __modify_schema__(cls, field_schema):
-            field_schema.update(type="string", format="binary")
-    else:
-
-        @classmethod
-        def __get_pydantic_core_schema__(
-            cls, _source_type: Any, _handler: GetCoreSchemaHandler
-        ) -> CoreSchema:
-            return no_info_after_validator_function(cls.load, any_schema())
-
-        @classmethod
-        def __get_pydantic_json_schema__(
-            cls, schema: CoreSchema, handler: GetJsonSchemaHandler
-        ) -> JsonSchemaValue:
-            return pydantic_compatible.get_model_json_schema(cls.__schema__)
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, schema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        return copy.deepcopy(
+            cls.__schema__.model_json_schema(
+                ref_template="#/components/schemas/{model}"
+            )
+        )
 
 
 class MongoDocument(Document):

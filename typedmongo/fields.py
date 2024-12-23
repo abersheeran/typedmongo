@@ -19,11 +19,6 @@ from bson import ObjectId
 from typing_extensions import Self
 
 from typedmongo.expressions import CompareMixin, HasFieldName, OrderByMixin
-from typedmongo.marshamallow import (
-    MarshamallowDateTime,
-    MarshamallowLiteral,
-    MarshamallowObjectId,
-)
 
 if TYPE_CHECKING:
     from .table import Document
@@ -84,7 +79,8 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
             message = "{0} has no attribute '{1}'".format(instance, self._name)
             raise AttributeError(message)
 
-    def get_field_type(self) -> type[FieldType]:
+    @property
+    def field_type(self) -> type[FieldType]:
         if hasattr(self, "__field_type__"):
             return self.__field_type__  # type: ignore
         for origin_base in self.__orig_bases__:  # type: ignore
@@ -104,6 +100,15 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
         return value
 
 
+class DynamicField(Field[FieldType]):
+    def __init__(self, field_type: type[FieldType]):
+        self.__field_type = field_type
+
+    @property
+    def field_type(self) -> type[FieldType]:
+        return self.__field_type
+
+
 @dataclasses.dataclass(eq=False)
 class ObjectIdField(Field[ObjectId]):
     """
@@ -111,7 +116,7 @@ class ObjectIdField(Field[ObjectId]):
     """
 
 
-LiteralField = Field
+LiteralField = DynamicField
 
 
 @dataclasses.dataclass(eq=False)
@@ -147,10 +152,6 @@ class DateTimeField(Field[datetime]):
     """
     DateTime field
     """
-
-    marshamallow: MarshamallowDateTime = dataclasses.field(
-        default_factory=lambda: MarshamallowDateTime(required=True, allow_none=False)
-    )
 
 
 @dataclasses.dataclass(eq=False)
