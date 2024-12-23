@@ -94,7 +94,7 @@ async def test_find_one_and_command(document_id):
 
     user = await User.objects.find_one_and_replace(
         User._id == document_id,
-        User.load({"name": "Aber", "age": 0}),
+        User.load({"name": "Aber", "age": 0}, partial=True),
         after_document=True,
     )
     assert user is not None
@@ -214,4 +214,4 @@ async def test_transaction(documents_id):
     async with User.objects.use_session():
         await User.objects.update_many({}, {"$set": {"age": 20}})
         await User.objects.delete_many(User.name == "Aber")
-        await User.objects.insert_one(User.load({"name": "Aber", "age": 18}))
+        await User.objects.insert_one(User.load({"name": "Aber", "age": 18}, partial=True))

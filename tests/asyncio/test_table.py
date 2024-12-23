@@ -200,6 +200,12 @@ def test_literal_field():
     assert user.gender == "m"
 
 
+def test_embedded_field():
+    user = User.load({"wallet": {"balance": 100}}, partial=True)
+    assert isinstance(user.wallet, Wallet)
+    assert user.wallet.balance == 100
+
+
 class UserWithRole(User):
     role: mongo.LiteralField[Literal["admin", "user"]]
 
@@ -210,3 +216,30 @@ UserWithRole.__lazy_init_fields__()
 def test_three_level_inheritance():
     user = UserWithRole.load(dict(role="admin"), partial=True)
     assert isinstance(user._id, str)
+
+
+class U(mongo.Document):
+    normal_type: mongo.UnionField[int | str]
+    list_type: mongo.ListField[int | str]
+    embedded_type: mongo.UnionField[UserWithRole | User]
+
+
+U.__lazy_init_fields__()
+
+
+def test_union_field():
+    u = U.load({"normal_type": 1}, partial=True)
+    assert u.normal_type == 1
+    u = U.load({"normal_type": "1"}, partial=True)
+    assert u.normal_type == "1"
+
+    u = U.load({"list_type": [1, "1"]}, partial=True)
+    assert u.list_type == [1, "1"]
+
+    u = U.load({"embedded_type": {"role": "admin"}}, partial=True)
+    assert isinstance(u.embedded_type, UserWithRole)
+    assert u.embedded_type.role == "admin"
+
+    u = U.load({"embedded_type": {"name": "Aber"}}, partial=True)
+    assert isinstance(u.embedded_type, User)
+    assert u.embedded_type.name == "Aber"

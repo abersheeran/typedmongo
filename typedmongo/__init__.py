@@ -22,6 +22,7 @@ from .fields import (
     LiteralField,
     ObjectIdField,
     StringField,
+    UnionField,
 )
 from .table import Document, Index, MongoDocument
 
@@ -55,4 +56,5 @@ __all__ = [
     "LiteralField",
     "ObjectIdField",
     "StringField",
+    "UnionField",
 ]
