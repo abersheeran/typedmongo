@@ -94,7 +94,7 @@ def test_find_one_and_command(document_id):
 
     user = User.objects.find_one_and_replace(
         User._id == document_id,
-        User.load({"name": "Aber", "age": 0}),
+        User.load({"name": "Aber", "age": 0}, partial=True),
         after_document=True,
     )
     assert user is not None
@@ -214,4 +214,4 @@ def test_transaction(documents_id):
     with User.objects.use_session():
         User.objects.update_many({}, {"$set": {"age": 20}})
         User.objects.delete_many(User.name == "Aber")
-        User.objects.insert_one(User.load({"name": "Aber", "age": 18}))
+        User.objects.insert_one(User.load({"name": "Aber", "age": 18}, partial=True))

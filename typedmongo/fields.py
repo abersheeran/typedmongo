@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import decimal
 from datetime import datetime
+from types import UnionType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -10,6 +11,7 @@ from typing import (
     Generic,
     Optional,
     TypeVar,
+    Union,
     get_args,
     get_origin,
     overload,
@@ -24,6 +26,7 @@ from typedmongo.marshamallow import (
     MarshamallowDateTime,
     MarshamallowLiteral,
     MarshamallowObjectId,
+    MarshamallowUnion,
 )
 
 if TYPE_CHECKING:
@@ -95,7 +98,8 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
             message = "{0} has no attribute '{1}'".format(instance, self._name)
             raise AttributeError(message)
 
-    def get_field_type(self) -> type[FieldType]:
+    @property
+    def field_type(self) -> type[FieldType]:
         if hasattr(self, "__field_type__"):
             return self.__field_type__  # type: ignore
         for origin_base in self.__orig_bases__:  # type: ignore
@@ -271,7 +275,8 @@ class EmbeddedField(Generic[T], Field[T]):
             self.schema.__lazy_init_fields__()
         return super().__set_name__(owner, name)
 
-    def get_field_type(self) -> type[T]:
+    @property
+    def field_type(self) -> type[T]:
         return self.schema
 
 
@@ -307,27 +312,29 @@ class ListField(Generic[FieldType], Field[list[FieldType]]):
 
     _: ListFieldNameProxy[type[FieldType]] = dataclasses.field(init=False)
 
-    field: Field[FieldType]
+    field: Field
 
     def __getitem__(self, index: int) -> type[FieldType]:
-        return ListFieldNameProxy(index, self, self.field.get_field_type())  # type: ignore
+        return ListFieldNameProxy(index, self, self.field.field_type)  # type: ignore
 
     def __post_init__(self):
-        self._ = ListFieldNameProxy(None, self, self.field.get_field_type())  # type: ignore
+        self._ = ListFieldNameProxy(None, self, self.field.field_type)
 
-        self.marshamallow = fields.List(self.field.marshamallow)  # type: ignore
+        self.marshamallow = fields.List(
+            self.field.marshamallow, required=True, allow_none=False
+        )
 
-        if isinstance(self.field, EmbeddedField):
+        if isinstance(self.field, (EmbeddedField, UnionField)):
             self.marshamallow = fields.List(self.field.marshamallow)
 
             def load(value: Any, *, partial: bool = False) -> list[FieldType]:
-                return [self.field.load(item, partial=partial) for item in value]  # type: ignore
+                return [self.field.load(item, partial=partial) for item in value]
 
             def dump(value: list[FieldType]) -> list[dict[str, Any]]:
-                return [self.field.dump(item) for item in value]  # type: ignore
+                return [self.field.dump(item) for item in value]
 
             def to_mongo(value: list[FieldType]) -> list[dict[str, Any]]:
-                return [self.field.to_mongo(item) for item in value]  # type: ignore
+                return [self.field.to_mongo(item) for item in value]
 
             self.load = load
             self.dump = dump
@@ -338,8 +345,30 @@ class ListField(Generic[FieldType], Field[list[FieldType]]):
             self.field.schema.__lazy_init_fields__()
         return super().__set_name__(owner, name)
 
-    def get_field_type(self) -> type[list[FieldType]]:
-        return list[self.field.get_field_type()]  # type: ignore
+    @property
+    def field_type(self) -> type[list[FieldType]]:
+        return list[self.field.field_type]
+
+
+@dataclasses.dataclass(eq=False)
+class UnionField(Field[FieldType]):
+    union: type[FieldType]
+
+    def __post_init__(self):
+        self.marshamallow = MarshamallowUnion(
+            [type_to_field(arg) for arg in get_args(self.union)],
+            required=True,
+            allow_none=False,
+        )
+
+    def __set_name__(self, owner: type[Document], name: str) -> None:
+        for arg in get_args(self.union):
+            type_to_field(arg).__set_name__(owner, name)
+        return super().__set_name__(owner, name)
+
+    @property
+    def field_type(self) -> type[FieldType]:
+        return self.union
 
 
 def type_to_field(type_: type) -> Field:
@@ -359,8 +388,11 @@ def type_to_field(type_: type) -> Field:
         return DecimalField()
     if type_ is ObjectId:
         return ObjectIdField()
-    if issubclass(type_, Document):
+    if isinstance(type_, type) and issubclass(type_, Document):
         return EmbeddedField(type_)
-    if get_origin(type_) is list:
+    origin = get_origin(type_)
+    if origin is list:
         return ListField(type_to_field(get_args(type_)[0]))
+    if origin is Union or origin is UnionType:
+        return UnionField(type_)
     raise ValueError(f"Cannot convert type {type_} to field")

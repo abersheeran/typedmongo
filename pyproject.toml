@@ -19,26 +19,6 @@ license = {text = "Apache2.0"}
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
-[tool.pdm]
-package-type = "library"
-
-[tool.pdm.dev-dependencies]
-test = [
-    "pytest>=8.1.1",
-    "pytest-cov>=5.0.0",
-    "pytest-asyncio>=0.23.6",
-]
-dev = [
-    "ruff>=0.4.1",
-]
-
-[tool.pdm.scripts]
-format = "ruff format ."
-lint = "ruff check ."
-pre_test = "python tests/sync.py"
-test = "pytest --cov=typedmongo --asyncio-mode=auto tests/"
-sync = "python typedmongo/sync.py"
-
 [tool.ruff]
 exclude = ["typedmongo/client.py", "typedmongo/fields.py", "typedmongo/table.py"]
 
@@ -65,3 +45,23 @@ exclude_lines = [
 show_missing = true
 skip_covered = true
 omit = ["typedmongo/sync.py"]
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.dev-dependencies]
+test = [
+    "pytest>=8.1.1",
+    "pytest-cov>=5.0.0",
+    "pytest-asyncio>=0.23.6",
+]
+dev = [
+    "ruff>=0.4.1",
+]
+
+[tool.pdm.scripts]
+format = "ruff format ."
+lint = "ruff check ."
+pre_test = "python tests/sync.py"
+test = "pytest --cov=typedmongo --asyncio-mode=auto tests/"
+sync = "python typedmongo/sync.py"
