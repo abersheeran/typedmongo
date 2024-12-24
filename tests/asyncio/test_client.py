@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 from decimal import Decimal
 
 import pytest
@@ -12,8 +13,14 @@ class Wallet(mongo.Document):
     balance: mongo.DecimalField
 
 
+class Gender(enum.Enum):
+    MALE = "m"
+    FEMALE = "f"
+
+
 class User(mongo.MongoDocument):
     name: mongo.StringField
+    gender: mongo.EnumField[Gender]
     age: mongo.IntegerField
     tags: mongo.ListField[str]
     wallet: mongo.EmbeddedField[Wallet]
@@ -48,6 +55,7 @@ async def document_id():
             {
                 "name": "Aber",
                 "age": 18,
+                "gender": "m",
                 "tags": ["a", "b"],
                 "wallet": {"balance": 100},
                 "children": [],
@@ -115,6 +123,7 @@ async def documents_id():
             {
                 "name": "Aber",
                 "age": 18,
+                "gender": "m",
                 "tags": ["a", "b"],
                 "wallet": {"balance": 100},
                 "children": [],
@@ -124,6 +133,7 @@ async def documents_id():
             {
                 "name": "Yue",
                 "age": 18,
+                "gender": "f",
                 "tags": ["y", "u"],
                 "wallet": {"balance": 200},
                 "children": [],
@@ -214,4 +224,6 @@ async def test_transaction(documents_id):
     async with User.objects.use_session():
         await User.objects.update_many({}, {"$set": {"age": 20}})
         await User.objects.delete_many(User.name == "Aber")
-        await User.objects.insert_one(User.load({"name": "Aber", "age": 18}, partial=True))
+        await User.objects.insert_one(
+            User.load({"name": "Aber", "age": 18}, partial=True)
+        )

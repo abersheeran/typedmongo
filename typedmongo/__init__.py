@@ -1,3 +1,4 @@
+from typedmongo.expressions import RawExpression
 from typedmongo.shortcuts import Contains, EndsWith, StartsWith
 
 from .client import (
@@ -15,7 +16,7 @@ from .fields import (
     DecimalField,
     DictField,
     EmbeddedField,
-    FieldParamters,
+    EnumField,
     FloatField,
     IntegerField,
     ListField,
@@ -31,6 +32,7 @@ Table = Document
 MongoTable = MongoDocument
 
 __all__ = [
+    "RawExpression",
     "Contains",
     "StartsWith",
     "EndsWith",
@@ -49,7 +51,7 @@ __all__ = [
     "DecimalField",
     "DictField",
     "EmbeddedField",
-    "FieldParamters",
+    "EnumField",
     "FloatField",
     "IntegerField",
     "ListField",

@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import decimal
 from datetime import datetime
+from enum import Enum
 from types import UnionType
 from typing import (
     TYPE_CHECKING,
@@ -36,13 +37,6 @@ TypeDocument = TypeVar("TypeDocument", bound=type["Document"])
 T = TypeVar("T", bound="Document")
 TypeDocumentOrAny = TypeVar("TypeDocumentOrAny", bound=type["Document"] | Any)
 FieldType = TypeVar("FieldType")
-
-
-@dataclasses.dataclass
-class FieldParamters(Generic[FieldType]):
-    default: Optional[FieldType | Callable[[], FieldType]] = dataclasses.field(
-        default=None, kw_only=True
-    )
 
 
 @dataclasses.dataclass(eq=False, order=False, unsafe_hash=True)
@@ -142,6 +136,26 @@ class LiteralField(Field[FieldType]):
         self.marshamallow = MarshamallowLiteral(
             self.literal, required=True, allow_none=False
         )
+
+
+EnumType = TypeVar("EnumType", bound=Enum)
+
+
+@dataclasses.dataclass(eq=False)
+class EnumField(Field[EnumType]):
+    """
+    Enum field
+    """
+
+    enum: type[EnumType]
+
+    def __post_init__(self):
+        self.marshamallow = fields.Enum(
+            self.enum, by_value=True, required=True, allow_none=False
+        )
+
+    def to_mongo(self, value: EnumType) -> Any:
+        return value.value
 
 
 @dataclasses.dataclass(eq=False)
@@ -388,6 +402,8 @@ def type_to_field(type_: type) -> Field:
         return DecimalField()
     if type_ is ObjectId:
         return ObjectIdField()
+    if isinstance(type_, type) and issubclass(type_, Enum):
+        return EnumField(type_)
     if isinstance(type_, type) and issubclass(type_, Document):
         return EmbeddedField(type_)
     origin = get_origin(type_)

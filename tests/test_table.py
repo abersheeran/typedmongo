@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import enum
 import uuid
 from typing import Literal
 
@@ -25,10 +26,17 @@ class Social(mongo.Document):
     user: mongo.StringField
 
 
+class Place(enum.Enum):
+    ONE = 1
+    TWO = 2
+    THREE = 3
+
+
 class User(MongoDocument):
     name: mongo.StringField
     gender: mongo.LiteralField[Literal["m", "f"]]
     age: mongo.IntegerField
+    place: mongo.EnumField[Place] = mongo.EnumField(Place, default=Place.ONE)
     tags: mongo.ListField[str]
     wallet: mongo.EmbeddedField[Wallet]
     created_at: mongo.DateTimeField = mongo.DateTimeField(
@@ -114,6 +122,7 @@ def test_field_default():
     )
     assert isinstance(user._id, str)
     assert isinstance(user.created_at, datetime.datetime)
+    assert user.place == Place.ONE
 
     user = User.load(
         {
