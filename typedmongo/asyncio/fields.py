@@ -58,7 +58,7 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
         self.field_name = name
 
         if not hasattr(self, "marshamallow"):
-            self.marshamallow = fields.Field(required=True, allow_none=False)
+            self.marshamallow = fields.Field(required=True, allow_none=True)
 
         if self.default is not None:
             # https://github.com/marshmallow-code/marshmallow/issues/2151
@@ -120,7 +120,7 @@ class ObjectIdField(Field[ObjectId]):
     """
 
     marshamallow: MarshamallowObjectId = dataclasses.field(
-        default_factory=lambda: MarshamallowObjectId(required=True, allow_none=False)
+        default_factory=lambda: MarshamallowObjectId(required=True, allow_none=True)
     )
 
 
@@ -134,7 +134,7 @@ class LiteralField(Field[FieldType]):
 
     def __post_init__(self):
         self.marshamallow = MarshamallowLiteral(
-            self.literal, required=True, allow_none=False
+            self.literal, required=True, allow_none=True
         )
 
 
@@ -151,7 +151,7 @@ class EnumField(Field[EnumType]):
 
     def __post_init__(self):
         self.marshamallow = fields.Enum(
-            self.enum, by_value=True, required=True, allow_none=False
+            self.enum, by_value=True, required=True, allow_none=True
         )
 
     def to_mongo(self, value: EnumType) -> Any:
@@ -165,7 +165,7 @@ class StringField(Field[str]):
     """
 
     marshamallow: fields.String = dataclasses.field(
-        default_factory=lambda: fields.String(required=True, allow_none=False)
+        default_factory=lambda: fields.String(required=True, allow_none=True)
     )
 
 
@@ -176,7 +176,7 @@ class IntegerField(Field[int]):
     """
 
     marshamallow: fields.Integer = dataclasses.field(
-        default_factory=lambda: fields.Integer(required=True, allow_none=False)
+        default_factory=lambda: fields.Integer(required=True, allow_none=True)
     )
 
 
@@ -187,7 +187,7 @@ class FloatField(Field[float]):
     """
 
     marshamallow: fields.Float = dataclasses.field(
-        default_factory=lambda: fields.Float(required=True, allow_none=False)
+        default_factory=lambda: fields.Float(required=True, allow_none=True)
     )
 
 
@@ -198,7 +198,7 @@ class BooleanField(Field[bool]):
     """
 
     marshamallow: fields.Boolean = dataclasses.field(
-        default_factory=lambda: fields.Boolean(required=True, allow_none=False)
+        default_factory=lambda: fields.Boolean(required=True, allow_none=True)
     )
 
 
@@ -209,7 +209,7 @@ class DateTimeField(Field[datetime]):
     """
 
     marshamallow: MarshamallowDateTime = dataclasses.field(
-        default_factory=lambda: MarshamallowDateTime(required=True, allow_none=False)
+        default_factory=lambda: MarshamallowDateTime(required=True, allow_none=True)
     )
 
 
@@ -220,7 +220,7 @@ class DecimalField(Field[decimal.Decimal]):
     """
 
     marshamallow: fields.Decimal = dataclasses.field(
-        default_factory=lambda: fields.Decimal(required=True, allow_none=False)
+        default_factory=lambda: fields.Decimal(required=True, allow_none=True)
     )
 
 
@@ -231,7 +231,7 @@ class DictField(Field[dict]):
     """
 
     marshamallow: fields.Dict = dataclasses.field(
-        default_factory=lambda: fields.Dict(required=True, allow_none=False)
+        default_factory=lambda: fields.Dict(required=True, allow_none=True)
     )
 
 
@@ -335,7 +335,7 @@ class ListField(Generic[FieldType], Field[list[FieldType]]):
         self._ = ListFieldNameProxy(None, self, self.field.field_type)
 
         self.marshamallow = fields.List(
-            self.field.marshamallow, required=True, allow_none=False
+            self.field.marshamallow, required=True, allow_none=True
         )
 
         if isinstance(self.field, (EmbeddedField, UnionField)):
@@ -372,7 +372,7 @@ class UnionField(Field[FieldType]):
         self.marshamallow = MarshamallowUnion(
             [type_to_field(arg) for arg in get_args(self.union)],
             required=True,
-            allow_none=False,
+            allow_none=True,
         )
 
     def __set_name__(self, owner: type[Document], name: str) -> None:
