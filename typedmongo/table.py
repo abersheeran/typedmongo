@@ -163,6 +163,17 @@ class DocumentMetaClass(type):
             )
         return super().__setattr__(name, value)
 
+    def __getattribute__(self, name: str) -> Any:
+        try:
+            return super().__getattribute__(name)
+        except AttributeError:
+            if not self.__fields_loaded__:
+                message = "Please initialize the Document {class_name} before using it.".format(
+                    class_name=self.__name__
+                )
+                raise AttributeError(message, name=name, obj=self)
+            raise
+
 
 class Document(metaclass=DocumentMetaClass):
     __abstract__ = True

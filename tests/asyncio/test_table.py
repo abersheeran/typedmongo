@@ -269,3 +269,15 @@ def test_union_field():
     assert u.list_embedded_type[0].role == "admin"
     assert isinstance(u.list_embedded_type[1], R1)
     assert u.list_embedded_type[1].role == "user"
+
+
+class NotInitialized(mongo.Document):
+    name: mongo.StringField
+
+
+def test_not_initialized():
+    with pytest.raises(
+        AttributeError,
+        match="Please initialize the Document NotInitialized before using it.",
+    ):
+        NotInitialized.name
