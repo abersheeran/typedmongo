@@ -252,11 +252,7 @@ class Document(metaclass=DocumentMetaClass):
         """
         Dump the instance to jsonable dict.
         """
-        dumped = {
-            key: getattr(self.__fields__[key], "dump")(value)
-            for key, value in self.__dict__.items()
-        }
-        return self.__schema__.dump(dumped)  # type: ignore
+        return self.__schema__.dump(self)  # type: ignore
 
     @classmethod
     def indexes(cls) -> list[Index]:

@@ -1,11 +1,14 @@
-from datetime import datetime
-from typing import Any, List, get_args
+from __future__ import annotations
 
-import marshmallow.error_store
-import marshmallow.exceptions
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, List, get_args
+
 from bson import ObjectId
 from bson.errors import InvalidId
 from marshmallow import ValidationError, fields
+
+if TYPE_CHECKING:
+    from .fields import Field
 
 
 class MarshamallowObjectId(fields.Field):
@@ -42,29 +45,35 @@ class MarshamallowLiteral(fields.Field):
 
 
 class MarshamallowUnion(fields.Field):
-    def __init__(self, fields: List[Any], **kwargs: Any):
+    def __init__(self, fields: List[Field[Any]], **kwargs: Any):
         self._candidate_fields = fields
+        self._candidate_fields_map = {field.field_type: field for field in fields}
         super().__init__(**kwargs)
 
     def _serialize(self, value: Any, attr: str | None, obj: Any, **kwargs):
-        fields = self._candidate_fields
-        for candidate_field in fields:
-            try:
-                return candidate_field.dump(value)
-            except ValidationError:
-                pass
+        candidate_field = self._candidate_fields_map.get(type(value))
+        if candidate_field:
+            return candidate_field.dump(value)
 
-        raise ValidationError(
+        raise TypeError(
             f"Unable to serialize value {value} with any of the candidate fields"
         )
 
-    def _deserialize(
-        self, value: Any, attr: str, data: Any, partial: bool = False, **kwargs: Any
-    ):
+    def _deserialize(self, value: Any, attr: str, data: Any, **kwargs: Any):
         errors = []
+        try_field = self._candidate_fields_map.get(type(value))
+        if try_field:
+            return try_field.load(
+                try_field.marshamallow.deserialize(value, attr, data, **kwargs)
+            )
+
         for candidate_field in self._candidate_fields:
             try:
-                return candidate_field.load(value, partial=partial)
-            except marshmallow.exceptions.ValidationError as exc:
+                return candidate_field.load(
+                    candidate_field.marshamallow.deserialize(
+                        value, attr, data, **kwargs
+                    )
+                )
+            except ValidationError as exc:
                 errors.append(exc.messages)
         raise ValidationError(message=errors, field_name=attr)

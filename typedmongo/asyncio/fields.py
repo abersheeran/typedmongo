@@ -269,7 +269,9 @@ class EmbeddedField(Generic[T], Field[T]):
 
     def __post_init__(self):
         self._ = FieldNameProxy(self, self.schema)
-        self.marshamallow = fields.Nested(lambda: self.schema.__schema__)
+        self.marshamallow = fields.Nested(
+            lambda: self.schema.__schema__, required=True, allow_none=True
+        )
 
         def load(value: Any, *, partial: bool = False) -> T:
             return self.schema.load(value, partial=partial)
@@ -370,7 +372,7 @@ class UnionField(Field[FieldType]):
 
     def __post_init__(self):
         self.marshamallow = MarshamallowUnion(
-            [type_to_field(arg) for arg in get_args(self.union)],
+            [type_to_field(arg) for arg in get_args(self.union)],  # type: ignore
             required=True,
             allow_none=True,
         )
@@ -385,7 +387,7 @@ class UnionField(Field[FieldType]):
         return self.union
 
 
-def type_to_field(type_: type) -> Field:
+def type_to_field(type_: type) -> Field[Any]:
     from .table import Document
 
     if type_ is str:

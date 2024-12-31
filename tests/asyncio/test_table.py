@@ -3,11 +3,14 @@ from __future__ import annotations
 import datetime
 import enum
 import uuid
+from decimal import Decimal
 from typing import Literal
 
 import pytest
+from bson import ObjectId
 
 import typedmongo.asyncio as mongo
+from typedmongo.asyncio.fields import type_to_field
 from typedmongo.expressions import Expression
 
 
@@ -19,11 +22,17 @@ class MongoDocument(mongo.Document):
 
 class Wallet(mongo.Document):
     balance: mongo.DecimalField
+    created_at: mongo.DateTimeField = mongo.DateTimeField(
+        default=lambda: datetime.datetime.now(datetime.UTC)
+    )
 
 
 class Social(mongo.Document):
     site: mongo.StringField
     user: mongo.StringField
+    updated_at: mongo.DateTimeField = mongo.DateTimeField(
+        default=lambda: datetime.datetime.now(datetime.UTC)
+    )
 
 
 class Place(enum.Enum):
@@ -95,6 +104,7 @@ def test_expression(expression, repr_str):
 
 
 def test_list_field():
+    now = datetime.datetime.now(datetime.UTC)
     user = User.load(
         {
             "name": "Aber",
@@ -103,10 +113,19 @@ def test_list_field():
             "tags": ["a", "b"],
             "wallet": {"balance": 100},
             "children": [],
-            "socials": [{"site": "github.com", "user": "abersheeran"}],
+            "socials": [
+                {"site": "github.com", "user": "abersheeran", "updated_at": now}
+            ],
         }
     )
-    assert user.socials == [Social(site="github.com", user="abersheeran")]
+    assert user.socials == [
+        Social(site="github.com", user="abersheeran", updated_at=now)
+    ]
+    assert isinstance(user.socials[0].updated_at, datetime.datetime)
+    assert (
+        user.dump()["socials"][0]["updated_at"]
+        == user.socials[0].updated_at.isoformat()
+    )
 
 
 def test_field_default():
@@ -229,10 +248,12 @@ def test_three_level_inheritance():
 
 class R0(mongo.Document):
     role: mongo.LiteralField[Literal["admin"]]
+    t: mongo.StringField = mongo.StringField(default="r0")
 
 
 class R1(mongo.Document):
     role: mongo.LiteralField[Literal["user"]]
+    t: mongo.StringField = mongo.StringField(default="r1")
 
 
 class U(mongo.Document):
@@ -269,6 +290,12 @@ def test_union_field():
     assert u.list_embedded_type[0].role == "admin"
     assert isinstance(u.list_embedded_type[1], R1)
     assert u.list_embedded_type[1].role == "user"
+    assert u.dump() == {
+        "list_embedded_type": [
+            {"role": "admin", "t": "r0"},
+            {"role": "user", "t": "r1"},
+        ]
+    }
 
 
 class NotInitialized(mongo.Document):
@@ -281,3 +308,19 @@ def test_not_initialized():
         match="Please initialize the Document NotInitialized before using it.",
     ):
         NotInitialized.name
+
+
+def test_type_to_field_edge_cases():
+    # 测试所有基本类型
+    assert type_to_field(str).__class__.__name__ == "StringField"
+    assert type_to_field(int).__class__.__name__ == "IntegerField"
+    assert type_to_field(float).__class__.__name__ == "FloatField"
+    assert type_to_field(bool).__class__.__name__ == "BooleanField"
+    assert type_to_field(datetime.datetime).__class__.__name__ == "DateTimeField"
+    assert type_to_field(Decimal).__class__.__name__ == "DecimalField"
+    assert type_to_field(ObjectId).__class__.__name__ == "ObjectIdField"
+
+    # 测试无效类型
+    with pytest.raises(ValueError) as exc:
+        type_to_field(complex)
+    assert "Cannot convert type" in str(exc.value)
