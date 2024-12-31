@@ -10,10 +10,12 @@ from typing import (
     AsyncGenerator,
     AsyncIterable,
     Generic,
+    List,
     Literal,
     Mapping,
     NoReturn,
     Optional,
+    Sequence,
     TypeAlias,
     TypeVar,
     overload,
@@ -213,6 +215,8 @@ class Objects(Generic[T]):
         limit: int = 0,
         sort: Optional[Sort] = None,
         allow_disk_use: Optional[bool] = None,
+        no_cursor_timeout: bool = False,
+        max_time_ms: Optional[int] = None,
     ) -> AsyncIterable[T]:
         async for document in self.collection.find(
             filter=translate_filter(filter),
@@ -221,6 +225,8 @@ class Objects(Generic[T]):
             limit=limit,
             sort=translate_sort(sort),
             allow_disk_use=allow_disk_use,
+            no_cursor_timeout=no_cursor_timeout,
+            max_time_ms=max_time_ms,
             session=SESSION.get(),
         ):
             yield self.table.load(document, partial=True)
@@ -314,6 +320,7 @@ class Objects(Generic[T]):
         sort: Optional[Sort] = None,
         upsert: Literal[False] = False,
         after_document: bool = False,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
     ) -> T | None: ...
 
     @overload
@@ -325,6 +332,7 @@ class Objects(Generic[T]):
         sort: Optional[Sort] = None,
         upsert: Literal[True] = True,
         after_document: bool = False,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
     ) -> T: ...
 
     async def find_one_and_update(
@@ -335,6 +343,7 @@ class Objects(Generic[T]):
         sort: Optional[Sort] = None,
         upsert: bool = False,
         after_document: bool = False,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
     ) -> T | None:
         document = await self.collection.find_one_and_update(
             filter=translate_filter(filter),
@@ -343,6 +352,7 @@ class Objects(Generic[T]):
             sort=translate_sort(sort),
             upsert=upsert,
             return_document=after_document,
+            array_filters=array_filters,
             session=SESSION.get(),
         )
         if document is None:
@@ -372,11 +382,13 @@ class Objects(Generic[T]):
         filter: Filter,
         update: Mapping[str, Any] | list[Mapping[str, Any]],
         upsert: bool = False,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
     ) -> MongoUpdateResult:
         return await self.collection.update_one(
             translate_filter(filter),
             update,
             upsert=upsert,
+            array_filters=array_filters,
             session=SESSION.get(),
         )
 
@@ -385,11 +397,13 @@ class Objects(Generic[T]):
         filter: Filter,
         update: Mapping[str, Any] | list[Mapping[str, Any]],
         upsert: bool = False,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
     ) -> MongoUpdateResult:
         return await self.collection.update_many(
             translate_filter(filter),
             update,
             upsert=upsert,
+            array_filters=array_filters,
             session=SESSION.get(),
         )
 
@@ -447,10 +461,13 @@ class InsertOne(Generic[T]):
 class ReplaceOne(Generic[T]):
     filter: Filter
     replacement: T
+    upsert: bool = False
 
     def to_mongo(self) -> MongoReplaceOne:
         return MongoReplaceOne(
-            translate_filter(self.filter), self.replacement.to_mongo()
+            translate_filter(self.filter),
+            self.replacement.to_mongo(),
+            upsert=self.upsert,
         )
 
 
@@ -459,10 +476,14 @@ class UpdateMany:
     filter: Filter
     update: Mapping[str, Any] | list[Mapping[str, Any]]
     upsert: bool = False
+    array_filters: List[Mapping[str, Any]] | None = None
 
     def to_mongo(self) -> MongoUpdateMany:
         return MongoUpdateMany(
-            translate_filter(self.filter), self.update, upsert=self.upsert
+            translate_filter(self.filter),
+            self.update,
+            upsert=self.upsert,
+            array_filters=self.array_filters,
         )
 
 
@@ -471,8 +492,12 @@ class UpdateOne:
     filter: Filter
     update: Mapping[str, Any] | list[Mapping[str, Any]]
     upsert: bool = False
+    array_filters: List[Mapping[str, Any]] | None = None
 
     def to_mongo(self) -> MongoUpdateOne:
         return MongoUpdateOne(
-            translate_filter(self.filter), self.update, upsert=self.upsert
+            translate_filter(self.filter),
+            self.update,
+            upsert=self.upsert,
+            array_filters=self.array_filters,
         )
