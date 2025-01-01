@@ -23,7 +23,7 @@ class MongoDocument(mongo.Document):
 class Wallet(mongo.Document):
     balance: mongo.DecimalField
     created_at: mongo.DateTimeField = mongo.DateTimeField(
-        default=lambda: datetime.datetime.now(datetime.UTC)
+        default=lambda: datetime.datetime.now(datetime.timezone.utc)
     )
 
 
@@ -31,7 +31,7 @@ class Social(mongo.Document):
     site: mongo.StringField
     user: mongo.StringField
     updated_at: mongo.DateTimeField = mongo.DateTimeField(
-        default=lambda: datetime.datetime.now(datetime.UTC)
+        default=lambda: datetime.datetime.now(datetime.timezone.utc)
     )
 
 
@@ -104,7 +104,7 @@ def test_expression(expression, repr_str):
 
 
 def test_list_field():
-    now = datetime.datetime.now(datetime.UTC)
+    now = datetime.datetime.now(datetime.timezone.utc)
     user = User.load(
         {
             "name": "Aber",
