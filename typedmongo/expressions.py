@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 import dataclasses
 from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
 
@@ -187,17 +188,39 @@ def compile_expression(expr: Expression) -> dict[str, Any]:
         case RawExpression(raw):
             return raw
         case CompareExpression(field, "==", arg):
-            return {field.field_name: arg}
+            return {
+                field.field_name: arg if not isinstance(arg, enum.Enum) else arg.value
+            }
         case CompareExpression(field, "!=", arg):
-            return {field.field_name: {"$ne": arg}}
+            return {
+                field.field_name: {
+                    "$ne": arg if not isinstance(arg, enum.Enum) else arg.value
+                }
+            }
         case CompareExpression(field, ">", arg):
-            return {field.field_name: {"$gt": arg}}
+            return {
+                field.field_name: {
+                    "$gt": arg if not isinstance(arg, enum.Enum) else arg.value
+                }
+            }
         case CompareExpression(field, ">=", arg):
-            return {field.field_name: {"$gte": arg}}
+            return {
+                field.field_name: {
+                    "$gte": arg if not isinstance(arg, enum.Enum) else arg.value
+                }
+            }
         case CompareExpression(field, "<", arg):
-            return {field.field_name: {"$lt": arg}}
+            return {
+                field.field_name: {
+                    "$lt": arg if not isinstance(arg, enum.Enum) else arg.value
+                }
+            }
         case CompareExpression(field, "<=", arg):
-            return {field.field_name: {"$lte": arg}}
+            return {
+                field.field_name: {
+                    "$lte": arg if not isinstance(arg, enum.Enum) else arg.value
+                }
+            }
         case CombineExpression("AND", left, right):
             return {"$and": [compile_expression(left), compile_expression(right)]}
         case CombineExpression("OR", left, right):

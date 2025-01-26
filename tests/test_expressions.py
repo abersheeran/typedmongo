@@ -1,4 +1,5 @@
 import dataclasses
+import enum
 
 import pytest
 
@@ -14,6 +15,10 @@ from typedmongo.expressions import (
 @dataclasses.dataclass(eq=False)
 class Field(CompareMixin):
     field_name: str
+
+
+class TestEnum(enum.Enum):
+    TEST = "test"
 
 
 field = Field("name")
@@ -153,6 +158,11 @@ field = Field("name")
                 CompareExpression(field, ">", 18),
             ),
             {"$or": [{"name": "Aber"}, {"name": {"$gt": 18}}]},
+        ),
+        (
+            field == TestEnum.TEST,
+            CompareExpression(field, "==", TestEnum.TEST),
+            {"name": "test"},
         ),
     ],
 )
