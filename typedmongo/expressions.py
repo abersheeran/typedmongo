@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import enum
 import dataclasses
+import enum
 from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
 
 from typing_extensions import Self
