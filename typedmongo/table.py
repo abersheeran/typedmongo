@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import dataclasses
 import inspect
@@ -13,6 +15,7 @@ from typing import (
     get_origin,
 )
 
+from bson import ObjectId
 from pydantic import BaseModel, create_model
 from pymongo import IndexModel
 from typing_extensions import Self, dataclass_transform
@@ -20,7 +23,7 @@ from typing_extensions import Self, dataclass_transform
 from typedmongo.exceptions import DocumentDefineError
 
 from .client import Manager
-from .fields import Field, ListField, ObjectIdField, type_to_field
+from .fields import Field, ObjectIdField
 
 if TYPE_CHECKING:
     from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler
@@ -142,9 +145,7 @@ class DocumentMetaClass(type):
                 if isinstance(value, type) and issubclass(value, Field)
             },
             **{
-                name: origin_class(type_to_field(get_args(value)[0]))
-                if issubclass(origin_class, ListField)
-                else origin_class(*get_args(value))
+                name: origin_class(*get_args(value))
                 for name, value in inspect.get_annotations(cls, eval_str=True).items()
                 if (origin_class := get_origin(value))
                 and isinstance(origin_class, type)
@@ -278,6 +279,4 @@ class Document(metaclass=DocumentMetaClass):
 class MongoDocument(Document):
     __abstract__ = True
 
-    _id: ObjectIdField = ObjectIdField(
-        marshamallow=MarshamallowObjectId(required=False)
-    )
+    _id: ObjectIdField = ObjectIdField(default=lambda: ObjectId())

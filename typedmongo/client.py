@@ -223,7 +223,7 @@ class Objects(Generic[T]):
             allow_disk_use=allow_disk_use,
             session=SESSION.get(),
         ):
-            yield self.table.load(document, partial=True)
+            yield self.table.load(document)
 
     def find_one(
         self,
@@ -243,7 +243,7 @@ class Objects(Generic[T]):
         )
         if document is None:
             return None
-        return self.table.load(document, partial=True)
+        return self.table.load(document)
 
     def find_one_and_delete(
         self,
@@ -259,7 +259,7 @@ class Objects(Generic[T]):
         )
         if document is None:
             return None
-        return self.table.load(document, partial=True)
+        return self.table.load(document)
 
     @overload
     def find_one_and_replace(
@@ -303,7 +303,7 @@ class Objects(Generic[T]):
         )
         if document is None:
             return None
-        return self.table.load(document, partial=True)
+        return self.table.load(document)
 
     @overload
     def find_one_and_update(
@@ -347,7 +347,7 @@ class Objects(Generic[T]):
         )
         if document is None:
             return None
-        return self.table.load(document, partial=True)
+        return self.table.load(document)
 
     def delete_one(
         self,

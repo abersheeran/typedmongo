@@ -1,6 +1,6 @@
 [project]
 name = "typedmongo"
-version = "1.12.0"
+version = "2.0.0"
 description = "A production-ready modern Python MongoDB ODM"
 authors = [
     {name = "abersheeran", email = "me@abersheeran.com"},
@@ -20,7 +20,7 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pdm]
-package-type = "library"
+distribution = true
 
 [tool.pdm.dev-dependencies]
 test = [
