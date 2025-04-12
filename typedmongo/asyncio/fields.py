@@ -90,6 +90,10 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
                 return generic_type
         raise RuntimeError(f"Cannot get field type for {self}")
 
+    @field_type.setter
+    def field_type(self, value: type[FieldType]):
+        self.__field_type__ = value
+
     def load(self, value: Any) -> FieldType:
         return value
 
@@ -100,13 +104,9 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
         return value
 
 
+@dataclasses.dataclass(eq=False)
 class DynamicField(Field[FieldType]):
-    def __init__(self, field_type: type[FieldType]):
-        self.__field_type = field_type
-
-    @property
-    def field_type(self) -> type[FieldType]:
-        return self.__field_type
+    field_type: type[FieldType]
 
 
 @dataclasses.dataclass(eq=False)

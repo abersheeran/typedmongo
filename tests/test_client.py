@@ -15,9 +15,9 @@ class Wallet(mongo.Document):
 class User(mongo.MongoDocument):
     name: mongo.StringField
     age: mongo.IntegerField
-    tags: mongo.ListField[str]
+    tags: mongo.DynamicField[list[str]]
     wallet: mongo.EmbeddedField[Wallet]
-    children: mongo.ListField[User]
+    children: mongo.DynamicField[list[User]]
 
     @classmethod
     def indexes(cls) -> list[mongo.Index]:

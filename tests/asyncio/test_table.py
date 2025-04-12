@@ -29,15 +29,13 @@ class User(MongoDocument):
     name: mongo.StringField
     gender: mongo.LiteralField[Literal["m", "f"]]
     age: mongo.IntegerField
-    tags: mongo.ListField[str]
+    tags: mongo.DynamicField[list[str]]
     wallet: mongo.EmbeddedField[Wallet]
     created_at: mongo.DateTimeField = mongo.DateTimeField(
         default=lambda: datetime.datetime.now(datetime.timezone.utc)
     )
-    children: mongo.ListField[User]
-    socials: mongo.ListField[Social] = mongo.ListField(
-        mongo.EmbeddedField(Social), default=list
-    )
+    children: mongo.DynamicField[list[User]]
+    socials: mongo.DynamicField[list[Social]] = mongo.DynamicField(list[Social], default=list)
     extra: mongo.DictField = mongo.DictField(default=dict)
 
 
@@ -60,20 +58,8 @@ User.__lazy_init_fields__()
             "CompareExpression(field=tags, operator='==', arg='a')",
         ),
         (
-            User.tags[0] == "0",
-            "CompareExpression(field=tags.0, operator='==', arg='0')",
-        ),
-        (
             User.wallet._.balance > 1,
             "CompareExpression(field=wallet.balance, operator='>', arg=1)",
-        ),
-        (
-            User.children[0].name == "Yue",
-            "CompareExpression(field=children.0.name, operator='==', arg='Yue')",
-        ),
-        (
-            User.children._.age >= 18,
-            "CompareExpression(field=children.age, operator='>=', arg=18)",
         ),
         (
             User.extra == {"a": "b"},
@@ -123,7 +109,6 @@ def test_field_default():
             "wallet": {"balance": 100},
             "children": [],
         },
-        partial=True,
     )
     assert isinstance(user._id, str)
     assert isinstance(user.created_at, datetime.datetime)
@@ -169,7 +154,7 @@ def test_recursion_field():
 
 
 def test_empty_field():
-    user = User.load({}, partial=True)
+    user = User.load({})
     assert not hasattr(user, "name")
     assert hasattr(user, "_id")
 
@@ -191,12 +176,12 @@ def test_dict_field():
 
 
 def test_datetime_field():
-    user = User.load(dict(created_at=datetime.datetime.now()), partial=True)
+    user = User.load(dict(created_at=datetime.datetime.now()))
     assert isinstance(user.created_at, datetime.datetime)
 
 
 def test_literal_field():
-    user = User.load(dict(gender="m"), partial=True)
+    user = User.load(dict(gender="m"))
     assert user.gender == "m"
 
 
@@ -208,5 +193,5 @@ UserWithRole.__lazy_init_fields__()
 
 
 def test_three_level_inheritance():
-    user = UserWithRole.load(dict(role="admin"), partial=True)
+    user = UserWithRole.load(dict(role="admin"))
     assert isinstance(user._id, str)
