@@ -49,6 +49,7 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
         default=None, kw_only=True
     )
     field_name: str = dataclasses.field(init=False)
+    allow_none: bool = dataclasses.field(default=True, kw_only=True)
     marshamallow: fields.Field = dataclasses.field(init=False)
 
     def __set_name__(self, owner: type[Document], name: str) -> None:
@@ -58,7 +59,9 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
         self.field_name = name
 
         if not hasattr(self, "marshamallow"):
-            self.marshamallow = fields.Field(required=True, allow_none=True)
+            self.marshamallow = fields.Field(required=True, allow_none=self.allow_none)
+        else:
+            self.marshamallow.allow_none = self.allow_none
 
         if self.default is not None:
             # https://github.com/marshmallow-code/marshmallow/issues/2151
@@ -134,7 +137,7 @@ class LiteralField(Field[FieldType]):
 
     def __post_init__(self):
         self.marshamallow = MarshamallowLiteral(
-            self.literal, required=True, allow_none=True
+            self.literal, required=True, allow_none=self.allow_none
         )
 
 
@@ -151,7 +154,7 @@ class EnumField(Field[EnumType]):
 
     def __post_init__(self):
         self.marshamallow = fields.Enum(
-            self.enum, by_value=True, required=True, allow_none=True
+            self.enum, by_value=True, required=True, allow_none=self.allow_none
         )
 
     def to_mongo(self, value: EnumType) -> Any:
@@ -270,7 +273,7 @@ class EmbeddedField(Generic[T], Field[T]):
     def __post_init__(self):
         self._ = FieldNameProxy(self, self.schema)
         self.marshamallow = fields.Nested(
-            lambda: self.schema.__schema__, required=True, allow_none=True
+            lambda: self.schema.__schema__, required=True, allow_none=self.allow_none
         )
 
         def load(value: Any, *, partial: bool = False) -> T:
@@ -337,7 +340,7 @@ class ListField(Generic[FieldType], Field[list[FieldType]]):
         self._ = ListFieldNameProxy(None, self, self.field.field_type)
 
         self.marshamallow = fields.List(
-            self.field.marshamallow, required=True, allow_none=True
+            self.field.marshamallow, required=True, allow_none=self.allow_none
         )
 
         if isinstance(self.field, (EmbeddedField, UnionField)):
@@ -374,7 +377,7 @@ class UnionField(Field[FieldType]):
         self.marshamallow = MarshamallowUnion(
             [type_to_field(arg) for arg in get_args(self.union)],  # type: ignore
             required=True,
-            allow_none=True,
+            allow_none=self.allow_none,
         )
 
     def __set_name__(self, owner: type[Document], name: str) -> None:

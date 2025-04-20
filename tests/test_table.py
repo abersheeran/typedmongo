@@ -10,8 +10,8 @@ import pytest
 from bson import ObjectId
 
 import typedmongo as mongo
-from typedmongo.expressions import Expression
 from typedmongo.fields import type_to_field
+from typedmongo.expressions import Expression
 
 
 class MongoDocument(mongo.Document):

@@ -17,7 +17,7 @@ class Field(CompareMixin):
     field_name: str
 
 
-class TestEnum(enum.Enum):
+class TEnum(enum.Enum):
     TEST = "test"
 
 
@@ -160,8 +160,8 @@ field = Field("name")
             {"$or": [{"name": "Aber"}, {"name": {"$gt": 18}}]},
         ),
         (
-            field == TestEnum.TEST,
-            CompareExpression(field, "==", TestEnum.TEST),
+            field == TEnum.TEST,
+            CompareExpression(field, "==", TEnum.TEST),
             {"name": "test"},
         ),
     ],
