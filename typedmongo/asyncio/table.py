@@ -81,7 +81,7 @@ class DocumentMetaClass(type):
         __sfields__: dict[str, Field]
         __fields_loaded__: bool
         __fields__: dict[str, Field]
-        __create_schema__: Callable[[str, dict[str, Field]], Schema]
+        __create_marshamallow_schema__: Callable[[str, dict[str, Field]], Schema]
         __schema__: Schema
 
     def __new__(cls, name, bases, namespace):
@@ -118,10 +118,10 @@ class DocumentMetaClass(type):
             {},
         )
 
-        if "__create_schema__" not in namespace:
+        if "__create_marshamallow_schema__" not in namespace:
             for base in bases:
-                create_schema = base.__create_schema__
-            namespace["__create_schema__"] = create_schema
+                create_schema = base.__create_marshamallow_schema__
+            namespace["__create_marshamallow_schema__"] = create_schema
 
         return super().__new__(cls, name, bases, namespace)
 
@@ -153,7 +153,7 @@ class DocumentMetaClass(type):
             setattr(cls, name, field)
             field.__set_name__(cls, name)
 
-        cls.__schema__ = cls.__create_schema__(cls.__name__, cls.__fields__)
+        cls.__schema__ = cls.__create_marshamallow_schema__(cls.__name__, cls.__fields__)
         return cls.__fields__
 
     def __setattr__(cls, name, value):
@@ -225,7 +225,7 @@ class Document(metaclass=DocumentMetaClass):
         } == {key: value.__dict__.get(key, None) for key in value.__fields__.keys()}
 
     @staticmethod
-    def __create_schema__(name: str, fields: dict[str, Field]) -> Schema:
+    def __create_marshamallow_schema__(name: str, fields: dict[str, Field]) -> Schema:
         schema_class = Schema.from_dict(
             {name: field.marshamallow for name, field in fields.items()}, name=name
         )
