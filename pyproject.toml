@@ -15,6 +15,11 @@ requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "Apache2.0"}
 
+[project.optional-dependencies]
+pydantic = [
+    "pydantic>=2",
+]
+
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
@@ -62,6 +67,7 @@ dev = [
 [tool.pdm.scripts]
 format = "ruff format ."
 lint = "ruff check ."
-pre_test = "python tests/sync.py"
-test = "pytest --cov=typedmongo --asyncio-mode=auto tests/"
 sync = "python typedmongo/sync.py"
+sync_test = "python tests/sync.py"
+pre_test = {composite = ["sync", "sync_test"]}
+test = "pytest --cov=typedmongo --asyncio-mode=auto tests/"

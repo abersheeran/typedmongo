@@ -324,3 +324,44 @@ def test_type_to_field_edge_cases():
     with pytest.raises(ValueError) as exc:
         type_to_field(complex)
     assert "Cannot convert type" in str(exc.value)
+
+
+def test_pydantic_schema():
+    from pydantic import BaseModel
+
+    class User(BaseModel):
+        wallet: Wallet
+
+    user = User.model_validate({"wallet": {"balance": 100}})
+    assert user.wallet.balance == Decimal(100)
+
+    schema = User.model_json_schema()
+    assert schema == {
+        "type": "object",
+        "title": "User",
+        "properties": {
+            "wallet": {
+                "type": "object",
+                "title": "Wallet",
+                "properties": {
+                    "balance": {
+                        "anyOf": [
+                            {"type": "number"},
+                            {"type": "string"},
+                            {"type": "null"},
+                        ],
+                        "title": "Balance",
+                    },
+                    "created_at": {
+                        "anyOf": [
+                            {"type": "string", "format": "date-time"},
+                            {"type": "null"},
+                        ],
+                        "title": "Created At",
+                    },
+                },
+                "required": ["balance"],
+            },
+        },
+        "required": ["wallet"],
+    }

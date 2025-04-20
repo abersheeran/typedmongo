@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import dataclasses
 import inspect
 from functools import reduce
@@ -21,6 +23,11 @@ from typedmongo.marshamallow import MarshamallowObjectId
 
 from .client import Manager
 from .fields import Field, ListField, ObjectIdField, type_to_field
+
+if TYPE_CHECKING:
+    from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler
+    from pydantic.json_schema import JsonSchemaValue
+    from pydantic_core import core_schema
 
 
 def snake_case(name: str) -> str:
@@ -153,7 +160,9 @@ class DocumentMetaClass(type):
             setattr(cls, name, field)
             field.__set_name__(cls, name)
 
-        cls.__schema__ = cls.__create_marshamallow_schema__(cls.__name__, cls.__fields__)
+        cls.__schema__ = cls.__create_marshamallow_schema__(
+            cls.__name__, cls.__fields__
+        )
         return cls.__fields__
 
     def __setattr__(cls, name, value):
@@ -266,6 +275,60 @@ class Document(metaclass=DocumentMetaClass):
             key: getattr(self.__fields__[key], "to_mongo")(value)
             for key, value in self.__dict__.items()
         }
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        """
+        Make the Document class can be validated by Pydantic
+        """
+        if cls.__abstract__:
+            raise TypeError(
+                f"Cannot use abstract class {cls.__name__} as a Pydantic type"
+            )
+
+        # Ensure fields are initialized
+        cls.__lazy_init_fields__()
+
+        from pydantic_core import core_schema
+
+        return core_schema.no_info_after_validator_function(
+            cls.load, core_schema.any_schema()
+        )
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        """
+        Make the Document class can be understood by Pydantic
+        """
+        from pydantic import Field, create_model
+
+        fields = {}
+        for name, field in cls.__fields__.items():
+            is_optional = field.allow_none
+            has_default = field.default is not None
+
+            if is_optional:
+                pydantic_type = Optional[field.field_type]
+            else:
+                pydantic_type = field.field_type
+
+            if has_default:
+                if callable(field.default):
+                    field_info = Field(default_factory=field.default)
+                else:
+                    field_info = Field(default=field.default)
+            else:
+                field_info = ...
+
+            fields[name] = (pydantic_type, field_info)
+
+        pydantic_model = create_model(cls.__name__, **fields)  # type: ignore
+
+        return handler.resolve_ref_schema(pydantic_model.model_json_schema())
 
 
 class MongoDocument(Document):
