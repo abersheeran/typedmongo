@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import enum
 import inspect
 from functools import reduce
 from typing import (
@@ -293,8 +294,14 @@ class Document(metaclass=DocumentMetaClass):
 
         from pydantic_core import core_schema
 
-        return core_schema.no_info_after_validator_function(
-            cls.load, core_schema.any_schema()
+        instance_schema = core_schema.is_instance_schema(cls)
+        dict_schema = handler.generate_schema(dict[str, Any])
+
+        return core_schema.union_schema(
+            [
+                instance_schema,
+                core_schema.no_info_after_validator_function(cls.load, dict_schema),
+            ]
         )
 
     @classmethod
@@ -304,12 +311,14 @@ class Document(metaclass=DocumentMetaClass):
         """
         Make the Document class can be understood by Pydantic
         """
-        from pydantic import Field, create_model
+        from pydantic import ConfigDict, Field, create_model
 
         fields = {}
         for name, field in cls.__fields__.items():
             is_optional = field.allow_none
             has_default = field.default is not None
+
+            alias = name if name.startswith("_") else None
 
             if is_optional:
                 pydantic_type = Optional[field.field_type]
@@ -318,17 +327,18 @@ class Document(metaclass=DocumentMetaClass):
 
             if has_default:
                 if callable(field.default):
-                    field_info = Field(default_factory=field.default)
+                    field_info = Field(default_factory=field.default, alias=alias)
                 else:
-                    field_info = Field(default=field.default)
+                    field_info = Field(default=field.default, alias=alias)
             else:
-                field_info = ...
+                field_info = Field(..., alias=alias)
 
-            fields[name] = (pydantic_type, field_info)
+            fields[name.lstrip("_")] = (pydantic_type, field_info)
 
-        pydantic_model = create_model(cls.__name__, **fields)  # type: ignore
-
-        return handler.resolve_ref_schema(pydantic_model.model_json_schema())
+        pydantic_model = create_model(
+            cls.__name__, __config__=ConfigDict(defer_build=True), **fields
+        )
+        return handler(pydantic_model.__pydantic_core_schema__)
 
 
 class MongoDocument(Document):

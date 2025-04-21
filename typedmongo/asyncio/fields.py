@@ -140,6 +140,10 @@ class LiteralField(Field[FieldType]):
             self.literal, required=True, allow_none=self.allow_none
         )
 
+    @property
+    def field_type(self) -> type[FieldType]:
+        return self.literal
+
 
 EnumType = TypeVar("EnumType", bound=Enum)
 
@@ -159,6 +163,10 @@ class EnumField(Field[EnumType]):
 
     def to_mongo(self, value: EnumType) -> Any:
         return value.value
+
+    @property
+    def field_type(self) -> type[EnumType]:
+        return self.enum
 
 
 @dataclasses.dataclass(eq=False)

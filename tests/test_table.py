@@ -326,42 +326,59 @@ def test_type_to_field_edge_cases():
     assert "Cannot convert type" in str(exc.value)
 
 
+class Mode(str, enum.Enum):
+    UNLIMITED = "unlimited"
+    LIMITED = "limited"
+
+
+class Settings(MongoDocument):
+    language: mongo.LiteralField[Literal["en", "zh"]]
+    mode: mongo.EnumField[Mode]
+
+
 def test_pydantic_schema():
     from pydantic import BaseModel
 
-    class User(BaseModel):
-        wallet: Wallet
+    class UserEntity(BaseModel):
+        settings: Settings
 
-    user = User.model_validate({"wallet": {"balance": 100}})
-    assert user.wallet.balance == Decimal(100)
+    user = UserEntity.model_validate(
+        {"settings": {"language": "en", "mode": "unlimited"}}
+    )
+    assert user.settings.language == "en"
+    assert user.settings.mode == Mode.UNLIMITED
 
-    schema = User.model_json_schema()
+    schema = UserEntity.model_json_schema()
     assert schema == {
-        "type": "object",
-        "title": "User",
-        "properties": {
-            "wallet": {
-                "type": "object",
-                "title": "Wallet",
-                "properties": {
-                    "balance": {
-                        "anyOf": [
-                            {"type": "number"},
-                            {"type": "string"},
-                            {"type": "null"},
-                        ],
-                        "title": "Balance",
-                    },
-                    "created_at": {
-                        "anyOf": [
-                            {"type": "string", "format": "date-time"},
-                            {"type": "null"},
-                        ],
-                        "title": "Created At",
-                    },
-                },
-                "required": ["balance"],
-            },
+        "$defs": {
+            "Mode": {
+                "enum": ["unlimited", "limited"],
+                "title": "Mode",
+                "type": "string",
+            }
         },
-        "required": ["wallet"],
+        "properties": {
+            "settings": {
+                "properties": {
+                    "_id": {
+                        "anyOf": [{"type": "string"}, {"type": "null"}],
+                        "title": "Id",
+                    },
+                    "language": {
+                        "anyOf": [
+                            {"enum": ["en", "zh"], "type": "string"},
+                            {"type": "null"},
+                        ],
+                        "title": "Language",
+                    },
+                    "mode": {"anyOf": [{"$ref": "#/$defs/Mode"}, {"type": "null"}]},
+                },
+                "required": ["language", "mode"],
+                "title": "Settings",
+                "type": "object",
+            }
+        },
+        "required": ["settings"],
+        "title": "UserEntity",
+        "type": "object",
     }
