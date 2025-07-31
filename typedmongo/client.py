@@ -23,7 +23,7 @@ from typing import (
 
 from bson.codec_options import CodecOptions, TypeCodec, TypeRegistry
 from bson.decimal128 import Decimal128
-from pymongo.client_session import TransactionOptions
+from pymongo.synchronous.client_session import TransactionOptions
 from pymongo.operations import DeleteMany as MongoDeleteMany
 from pymongo.operations import DeleteOne as MongoDeleteOne
 from pymongo.operations import InsertOne as MongoInsertOne
@@ -35,9 +35,9 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
-    from pymongo.client_session import ClientSession as MongoSession
-    from pymongo.collection import Collection as MongoCollection
-    from pymongo.database import Database as MongoDatabase
+    from pymongo.synchronous.client_session import ClientSession as MongoSession
+    from pymongo.synchronous.collection import Collection as MongoCollection
+    from pymongo.synchronous.database import Database as MongoDatabase
     from pymongo.results import BulkWriteResult as MongoBlukWriteResult
     from pymongo.results import DeleteResult as MongoDeleteResult
     from pymongo.results import UpdateResult as MongoUpdateResult

@@ -1,14 +1,13 @@
 [project]
 name = "typedmongo"
-version = "1.16.1"
+version = "1.17.0"
 description = "A production-ready modern Python MongoDB ODM"
 authors = [
     {name = "abersheeran", email = "me@abersheeran.com"},
 ]
 dependencies = [
-    "pymongo>=4.6.3",
-    "motor>=3.4.0",
-    "marshmallow>=3.21.1",
+    "pymongo>=4.13.2",
+    "marshmallow>=4.0.0",
     "typing-extensions>=4.11.0",
 ]
 requires-python = ">=3.10"

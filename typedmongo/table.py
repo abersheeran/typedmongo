@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import enum
 import inspect
 from functools import reduce
 from typing import (

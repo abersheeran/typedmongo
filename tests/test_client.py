@@ -4,7 +4,7 @@ import enum
 from decimal import Decimal
 
 import pytest
-from pymongo import MongoClient
+from pymongo.synchronous.mongo_client import MongoClient
 
 import typedmongo as mongo
 

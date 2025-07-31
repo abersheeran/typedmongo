@@ -4,7 +4,7 @@ import enum
 from decimal import Decimal
 
 import pytest
-from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
+from pymongo.asynchronous.mongo_client import AsyncMongoClient as MongoClient
 
 import typedmongo.asyncio as mongo
 

@@ -14,17 +14,18 @@ def main(just_check: bool = False):
         content = path.read_text()
         content = (
             content.replace(
-                "from motor.motor_asyncio import AsyncIOMotorCollection",
-                "from pymongo.collection import Collection",
+                "from pymongo.asynchronous.client_session import AsyncClientSession",
+                "from pymongo.synchronous.client_session import ClientSession",
             )
             .replace(
-                "from motor.motor_asyncio import AsyncIOMotorDatabase",
-                "from pymongo.database import Database",
+                "from pymongo.asynchronous.collection import AsyncCollection",
+                "from pymongo.synchronous.collection import Collection",
             )
             .replace(
-                "from motor.motor_asyncio import AsyncIOMotorClientSession as MongoSession",
-                "from pymongo.client_session import ClientSession as MongoSession",
+                "from pymongo.asynchronous.database import AsyncDatabase",
+                "from pymongo.synchronous.database import Database",
             )
+            .replace("from pymongo.asynchronous", "from pymongo.synchronous")
             .replace("async def ", "def ")
             .replace("await ", "")
             .replace("async for ", "for ")

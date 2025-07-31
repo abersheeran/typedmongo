@@ -23,7 +23,7 @@ from typing import (
 
 from bson.codec_options import CodecOptions, TypeCodec, TypeRegistry
 from bson.decimal128 import Decimal128
-from pymongo.client_session import TransactionOptions
+from pymongo.asynchronous.client_session import TransactionOptions
 from pymongo.operations import DeleteMany as MongoDeleteMany
 from pymongo.operations import DeleteOne as MongoDeleteOne
 from pymongo.operations import InsertOne as MongoInsertOne
@@ -35,9 +35,9 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorClientSession as MongoSession
-    from motor.motor_asyncio import AsyncIOMotorCollection as MongoCollection
-    from motor.motor_asyncio import AsyncIOMotorDatabase as MongoDatabase
+    from pymongo.asynchronous.client_session import AsyncClientSession as MongoSession
+    from pymongo.asynchronous.collection import AsyncCollection as MongoCollection
+    from pymongo.asynchronous.database import AsyncDatabase as MongoDatabase
     from pymongo.results import BulkWriteResult as MongoBlukWriteResult
     from pymongo.results import DeleteResult as MongoDeleteResult
     from pymongo.results import UpdateResult as MongoUpdateResult
@@ -156,7 +156,7 @@ class Objects(Generic[T]):
         async with Document.objects.use_session() as session:
             await Document.objects.insert_one(document)
         """
-        async with await self.collection.database.client.start_session(
+        async with self.collection.database.client.start_session(
             causal_consistency=causal_consistency,
             default_transaction_options=default_transaction_options,
             snapshot=snapshot,
@@ -183,7 +183,7 @@ class Objects(Generic[T]):
             await Document.objects.insert_one(document)
         """
         async with self.use_session() as session:
-            async with session.start_transaction(
+            async with await session.start_transaction(
                 read_concern=read_concern,
                 write_concern=write_concern,
                 read_preference=read_preference,

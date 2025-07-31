@@ -14,8 +14,8 @@ def main(just_check: bool = False):
         content = path.read_text()
         content = (
             content.replace(
-                "from motor.motor_asyncio import AsyncIOMotorClient as MongoClient",
-                "from pymongo import MongoClient",
+                "from pymongo.asynchronous.mongo_client import AsyncMongoClient as MongoClient",
+                "from pymongo.synchronous.mongo_client import MongoClient",
             )
             .replace("typedmongo.asyncio", "typedmongo")
             .replace("async def ", "def ")
