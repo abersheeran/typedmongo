@@ -409,6 +409,8 @@ def type_to_field(type_: type) -> Field[Any]:
         return FloatField()
     if type_ is bool:
         return BooleanField()
+    if type_ is dict:
+        return DictField()
     if type_ is datetime:
         return DateTimeField()
     if type_ is decimal.Decimal:
