@@ -21,7 +21,7 @@ Usage examples trump all usage documentation. So please look at the Example belo
 import datetime
 from typing import Literal
 
-from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
+from pymongo import AsyncMongoClient as MongoClient
 
 import typedmongo.asyncio as mongo
 
