@@ -12,9 +12,6 @@ if TYPE_CHECKING:
 
 
 class MarshamallowObjectId(fields.Field):
-    def _serialize(self, value: ObjectId, attr: str | None, obj: Any, **kwargs) -> str:
-        return str(value)
-
     def _deserialize(
         self, value: str | ObjectId | bytes, attr: str | None, data: Any, **kwargs
     ) -> ObjectId:
@@ -50,16 +47,7 @@ class MarshamallowUnion(fields.Field):
         self._candidate_fields_map = {field.field_type: field for field in fields}
         super().__init__(**kwargs)
 
-    def _serialize(self, value: Any, attr: str | None, obj: Any, **kwargs):
-        candidate_field = self._candidate_fields_map.get(type(value))
-        if candidate_field:
-            return candidate_field.dump(value)
-
-        raise TypeError(
-            f"Unable to serialize value {value} with any of the candidate fields"
-        )
-
-    def _deserialize(self, value: Any, attr: str, data: Any, **kwargs: Any):
+    def _deserialize(self, value: Any, attr: str | None, data: Any, **kwargs: Any):
         errors = []
         try_field = self._candidate_fields_map.get(type(value))
         if try_field:
@@ -76,4 +64,4 @@ class MarshamallowUnion(fields.Field):
                 )
             except ValidationError as exc:
                 errors.append(exc.messages)
-        raise ValidationError(message=errors, field_name=attr)
+        raise ValidationError(message=errors, field_name=attr if attr is not None else "")

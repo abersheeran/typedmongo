@@ -37,10 +37,11 @@ TypeDocument = TypeVar("TypeDocument", bound=type["Document"])
 T = TypeVar("T", bound="Document")
 TypeDocumentOrAny = TypeVar("TypeDocumentOrAny", bound=type["Document"] | Any)
 FieldType = TypeVar("FieldType")
+MarshamallowFieldType = TypeVar("MarshamallowFieldType", bound=fields.Field)
 
 
 @dataclasses.dataclass(eq=False, order=False, unsafe_hash=True)
-class Field(Generic[FieldType], OrderByMixin, CompareMixin):
+class Field(Generic[FieldType, MarshamallowFieldType], OrderByMixin, CompareMixin):
     """
     Field
     """
@@ -50,7 +51,7 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
     )
     field_name: str = dataclasses.field(init=False)
     allow_none: bool = dataclasses.field(default=True, kw_only=True)
-    marshamallow: fields.Field = dataclasses.field(init=False)
+    marshamallow: MarshamallowFieldType = dataclasses.field(init=False)
 
     def __set_name__(self, owner: type[Document], name: str) -> None:
         self._table = owner
@@ -58,10 +59,7 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
 
         self.field_name = name
 
-        if not hasattr(self, "marshamallow"):
-            self.marshamallow = fields.Field(required=True, allow_none=self.allow_none)
-        else:
-            self.marshamallow.allow_none = self.allow_none
+        self.marshamallow.allow_none = self.allow_none
 
         if self.default is not None:
             # https://github.com/marshmallow-code/marshmallow/issues/2151
@@ -117,7 +115,7 @@ class Field(Generic[FieldType], OrderByMixin, CompareMixin):
 
 
 @dataclasses.dataclass(eq=False)
-class ObjectIdField(Field[ObjectId]):
+class ObjectIdField(Field[ObjectId, MarshamallowObjectId]):
     """
     ObjectId field
     """
@@ -126,9 +124,12 @@ class ObjectIdField(Field[ObjectId]):
         default_factory=lambda: MarshamallowObjectId(required=True, allow_none=True)
     )
 
+    def dump(self, value: ObjectId) -> Any:
+        return str(value)
+
 
 @dataclasses.dataclass(eq=False)
-class LiteralField(Field[FieldType]):
+class LiteralField(Field[FieldType, MarshamallowLiteral]):
     """
     Literal field
     """
@@ -149,7 +150,7 @@ EnumType = TypeVar("EnumType", bound=Enum)
 
 
 @dataclasses.dataclass(eq=False)
-class EnumField(Field[EnumType]):
+class EnumField(Field[EnumType, fields.Enum]):
     """
     Enum field
     """
@@ -161,6 +162,9 @@ class EnumField(Field[EnumType]):
             self.enum, by_value=True, required=True, allow_none=self.allow_none
         )
 
+    def dump(self, value: EnumType) -> Any:
+        return value.value
+
     def to_mongo(self, value: EnumType) -> Any:
         return value.value
 
@@ -170,7 +174,7 @@ class EnumField(Field[EnumType]):
 
 
 @dataclasses.dataclass(eq=False)
-class StringField(Field[str]):
+class StringField(Field[str, fields.String]):
     """
     String field
     """
@@ -181,7 +185,7 @@ class StringField(Field[str]):
 
 
 @dataclasses.dataclass(eq=False)
-class IntegerField(Field[int]):
+class IntegerField(Field[int, fields.Integer]):
     """
     Integer field
     """
@@ -192,7 +196,7 @@ class IntegerField(Field[int]):
 
 
 @dataclasses.dataclass(eq=False)
-class FloatField(Field[float]):
+class FloatField(Field[float, fields.Float]):
     """
     Float field
     """
@@ -203,7 +207,7 @@ class FloatField(Field[float]):
 
 
 @dataclasses.dataclass(eq=False)
-class BooleanField(Field[bool]):
+class BooleanField(Field[bool, fields.Boolean]):
     """
     Boolean field
     """
@@ -214,7 +218,7 @@ class BooleanField(Field[bool]):
 
 
 @dataclasses.dataclass(eq=False)
-class DateTimeField(Field[datetime]):
+class DateTimeField(Field[datetime, MarshamallowDateTime]):
     """
     DateTime field
     """
@@ -223,9 +227,12 @@ class DateTimeField(Field[datetime]):
         default_factory=lambda: MarshamallowDateTime(required=True, allow_none=True)
     )
 
+    def dump(self, value: datetime) -> Any:
+        return value.isoformat(timespec="microseconds")
+
 
 @dataclasses.dataclass(eq=False)
-class DecimalField(Field[decimal.Decimal]):
+class DecimalField(Field[decimal.Decimal, fields.Decimal]):
     """
     Decimal field
     """
@@ -234,9 +241,12 @@ class DecimalField(Field[decimal.Decimal]):
         default_factory=lambda: fields.Decimal(required=True, allow_none=True)
     )
 
+    def dump(self, value: decimal.Decimal) -> Any:
+        return str(value)
+
 
 @dataclasses.dataclass(eq=False)
-class DictField(Field[dict]):
+class DictField(Field[dict, fields.Dict]):
     """
     Dict field
     """
@@ -269,7 +279,7 @@ class FieldNameProxyString(OrderByMixin, CompareMixin):
 
 
 @dataclasses.dataclass(eq=False)
-class EmbeddedField(Generic[T], Field[T]):
+class EmbeddedField(Generic[T], Field[T, fields.Nested]):
     """
     Embedded field
     """
@@ -314,7 +324,7 @@ class ListFieldNameProxy(Generic[TypeDocumentOrAny], OrderByMixin, CompareMixin)
     t: TypeDocumentOrAny
 
     @property
-    def field_name(self) -> str:
+    def field_name(self) -> str:  # type: ignore
         if self.number is None:
             return self.prefix.field_name
         return f"{self.prefix.field_name}.{self.number}"
@@ -332,7 +342,7 @@ class ListFieldNameProxy(Generic[TypeDocumentOrAny], OrderByMixin, CompareMixin)
 
 
 @dataclasses.dataclass(eq=False)
-class ListField(Generic[FieldType], Field[list[FieldType]]):
+class ListField(Generic[FieldType], Field[list[FieldType], fields.List]):
     """
     List field
     """
@@ -378,7 +388,7 @@ class ListField(Generic[FieldType], Field[list[FieldType]]):
 
 
 @dataclasses.dataclass(eq=False)
-class UnionField(Field[FieldType]):
+class UnionField(Field[FieldType, MarshamallowUnion]):
     union: type[FieldType]
 
     def __post_init__(self):
@@ -397,13 +407,18 @@ class UnionField(Field[FieldType]):
     def field_type(self) -> type[FieldType]:
         return self.union
 
+    def dump(self, value: FieldType) -> Any:
+        if hasattr(value, "dump"):
+            return value.dump()  # type: ignore
+        return value
+
     def to_mongo(self, value: FieldType) -> Any:
         if hasattr(value, "to_mongo"):
             return value.to_mongo()  # type: ignore
         return value
 
 
-def type_to_field(type_: type) -> Field[Any]:
+def type_to_field(type_: type) -> Field[Any, Any]:
     from .table import Document
 
     if type_ is str:

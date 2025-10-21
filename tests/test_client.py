@@ -227,3 +227,87 @@ def test_transaction(documents_id):
         User.objects.insert_one(
             User.load({"name": "Aber", "age": 18}, partial=True)
         )
+
+
+def test_collection_not_initialized():
+    """Test Manager.collection raises AttributeError when not initialized - covers lines 140-141"""
+    # Create a new document class without initializing collections
+    class UninitializedDoc(mongo.MongoDocument):
+        name: mongo.StringField
+
+    # Try to access collection before initialization
+    with pytest.raises(AttributeError, match="has not been initialized"):
+        _ = UninitializedDoc.objects.collection
+
+
+def test_use_transaction_with_options():
+    """Test Manager.use_transaction with session options - covers lines 185-192"""
+    from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import ReadPreference
+    from pymongo.write_concern import WriteConcern
+
+    # Test use_transaction with custom options
+    with User.objects.use_transaction(
+        read_concern=ReadConcern("majority"),
+        write_concern=WriteConcern(w=1),
+        read_preference=ReadPreference.PRIMARY,
+        max_commit_time_ms=5000,
+    ):
+        # Insert a document in transaction
+        User.objects.insert_one(
+            User.load(
+                {
+                    "name": "Transaction Test",
+                    "age": 25,
+                    "gender": "m",
+                    "tags": ["test"],
+                    "wallet": {"balance": 100},
+                    "children": [],
+                },
+            )
+        )
+
+    # Verify the document was inserted
+    user = User.objects.find_one(User.name == "Transaction Test")
+    assert user is not None
+    User.objects.delete_one(User._id == user._id)
+
+
+def test_find_one_and_update_not_found():
+    """Test find_one_and_update returning None - covers line 267"""
+    # Try to update a non-existent document
+    result = User.objects.find_one_and_update(
+        User.name == "NonExistentUser12345", {"$set": {"age": 99}}
+    )
+    assert result is None
+
+
+def test_find_one_and_replace_not_found():
+    """Test find_one_and_replace returning None - covers line 311"""
+    # Try to replace a non-existent document
+    result = User.objects.find_one_and_replace(
+        User.name == "NonExistentUser12345",
+        User.load({"name": "Replacement", "age": 99}, partial=True),
+    )
+    assert result is None
+
+
+def test_find_one_and_delete_not_found():
+    """Test find_one_and_delete returning None - covers line 359"""
+    # Try to delete a non-existent document
+    result = User.objects.find_one_and_delete(User.name == "NonExistentUser12345")
+    assert result is None
+
+
+def test_update_one_to_mongo():
+    """Test UpdateOne.to_mongo method - covers line 498"""
+    # Create an UpdateOne instance
+    update_op = mongo.UpdateOne(User.name == "Test", {"$set": {"age": 30}}, upsert=True)
+
+    # Call to_mongo to get the MongoDB operation
+    mongo_op = update_op.to_mongo()
+
+    # Verify the operation structure
+    assert mongo_op is not None
+    assert hasattr(mongo_op, "_filter")
+    assert hasattr(mongo_op, "_doc")

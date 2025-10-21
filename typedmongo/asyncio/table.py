@@ -128,7 +128,7 @@ class DocumentMetaClass(type):
         if "__create_marshamallow_schema__" not in namespace:
             for base in bases:
                 create_schema = base.__create_marshamallow_schema__
-            namespace["__create_marshamallow_schema__"] = create_schema
+                namespace["__create_marshamallow_schema__"] = create_schema
 
         return super().__new__(cls, name, bases, namespace)
 
@@ -261,7 +261,10 @@ class Document(metaclass=DocumentMetaClass):
         """
         Dump the instance to jsonable dict.
         """
-        return self.__schema__.dump(self)  # type: ignore
+        return {
+            key: getattr(self.__fields__[key], "dump")(value)
+            for key, value in self.__dict__.items()
+        }
 
     @classmethod
     def indexes(cls) -> list[Index]:
