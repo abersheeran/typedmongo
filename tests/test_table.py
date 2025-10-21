@@ -297,6 +297,22 @@ def test_union_field():
         ]
     }
 
+    u = U(
+        normal_type="normal",
+        list_type=[1, "2"],
+        embedded_type=R0(role="admin"),
+        list_embedded_type=[R0(role="admin"), R1(role="user")],
+    )
+    assert u.to_mongo() == {
+        "normal_type": "normal",
+        "list_type": [1, "2"],
+        "embedded_type": {"role": "admin", "t": "r0"},
+        "list_embedded_type": [
+            {"role": "admin", "t": "r0"},
+            {"role": "user", "t": "r1"},
+        ],
+    }
+
 
 class NotInitialized(mongo.Document):
     name: mongo.StringField

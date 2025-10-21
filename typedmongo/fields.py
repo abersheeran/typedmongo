@@ -397,6 +397,11 @@ class UnionField(Field[FieldType]):
     def field_type(self) -> type[FieldType]:
         return self.union
 
+    def to_mongo(self, value: FieldType) -> Any:
+        if hasattr(value, "to_mongo"):
+            return value.to_mongo()  # type: ignore
+        return value
+
 
 def type_to_field(type_: type) -> Field[Any]:
     from .table import Document
