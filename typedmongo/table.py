@@ -263,6 +263,8 @@ class Document(metaclass=DocumentMetaClass):
         """
         return {
             key: getattr(self.__fields__[key], "dump")(value)
+            if value is not None
+            else None
             for key, value in self.__dict__.items()
         }
 
