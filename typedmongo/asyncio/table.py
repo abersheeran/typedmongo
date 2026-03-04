@@ -45,8 +45,7 @@ class Index:
     keys: (
         Field
         | Sequence[tuple[Field, int | str | Mapping[str, Any]]]
-        | Mapping[Field, Any]
-        | Mapping[str, Any]
+        | Mapping[Field | str, Any]
     )
 
     name: Optional[str] = None
