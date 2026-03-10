@@ -22,6 +22,7 @@ from .fields import (
     ListField,
     LiteralField,
     ObjectIdField,
+    OptionalField,
     StringField,
     UnionField,
 )
@@ -57,6 +58,7 @@ __all__ = [
     "ListField",
     "LiteralField",
     "ObjectIdField",
+    "OptionalField",
     "StringField",
     "UnionField",
 ]

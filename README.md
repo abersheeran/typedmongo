@@ -41,6 +41,9 @@ class User(mongo.MongoDocument):
     )
     children: mongo.ListField[User]
     extra: mongo.DictField = mongo.DictField(default=dict)
+    # Optional fields
+    nickname: mongo.OptionalField[str]
+    bio: mongo.OptionalField[str]
 
 
 async def main():
@@ -144,6 +147,8 @@ Document.objects.collection.aggregate([
 - `ObjectIdField`
 - `StringField`
 - `IntegerField`
+- `FloatField`
+- `BooleanField`
 - `DecimalField`
 - `DateTimeField`
 - `DictField`
@@ -152,6 +157,41 @@ Document.objects.collection.aggregate([
 - `LiteralField`
 - `UnionField`
 - `EnumField`
+- `OptionalField[T]` - Optional field that defaults to None
+
+#### Optional Fields
+
+Use `mongo.OptionalField[T]` to declare fields that:
+- Accept `None` values
+- Default to `None` in non-partial loads
+- Remain unset in partial loads
+
+```python
+class User(mongo.Document):
+    name: mongo.StringField  # Required
+    nickname: mongo.OptionalField[str]  # Optional, defaults to None
+    age: mongo.OptionalField[int]
+    bio: mongo.OptionalField[str]
+    wallet: mongo.OptionalField[Wallet]  # Optional embedded document
+    tags: mongo.OptionalField[list[str]]  # Optional list
+
+# Create with only required fields
+user = User(name="Alice")
+assert user.nickname is None
+
+# Load without optional fields (non-partial)
+user = User.load({"name": "Bob"})
+assert user.nickname is None
+
+# Load without optional fields (partial)
+user = User.load({"name": "Charlie"}, partial=True)
+assert not hasattr(user, "nickname")  # Unset
+```
+
+**Difference from `allow_none=True`:**
+- Regular fields with `allow_none=True` still require a value (or explicit default)
+- `OptionalField[T]` fields automatically default to `None` in non-partial loads
+- In partial loads, `OptionalField[T]` fields remain unset if missing
 
 ### Conditional expressions
 
@@ -180,6 +220,26 @@ Document.objects.collection.aggregate([
 - `~(Document.field == value)`
 - `~((Document.field == value) & (Document.field == value))`
 - `~((Document.field == value) | (Document.field == value))`
+
+#### String matching shortcuts
+
+- `Contains(value, case_sensitive=True)` - Check if field contains substring
+- `StartsWith(value, case_sensitive=True)` - Check if field starts with prefix
+- `EndsWith(value, case_sensitive=True)` - Check if field ends with suffix
+
+```python
+from typedmongo.asyncio import Contains, StartsWith, EndsWith
+
+# Find users whose name contains "John"
+users = User.objects.find(User.name == Contains("John"))
+
+# Case-insensitive search
+users = User.objects.find(User.name == Contains("john", case_sensitive=False))
+
+# Starts with / Ends with
+users = User.objects.find(User.name == StartsWith("A"))
+users = User.objects.find(User.email == EndsWith("@example.com"))
+```
 
 #### `RawExpression`
 

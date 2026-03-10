@@ -135,17 +135,34 @@ class DocumentMetaClass(type):
         if cls.__fields_loaded__:
             return cls.__fields__
 
+        annotations = inspect.get_annotations(cls, eval_str=True)
+
+        # Check for conflicts: OptionalField annotation with explicit field assignment
+        from .fields import OptionalField
+        for name in annotations:
+            ann_value = annotations[name]
+            # Check if annotation is an OptionalField (including parameterized versions)
+            is_optional_field = (
+                isinstance(ann_value, type) and issubclass(ann_value, OptionalField)
+            )
+            if is_optional_field and name in cls.__sfields__:
+                raise DocumentDefineError(
+                    f"Field '{name}' in class '{cls.__name__}' has both a mongo.OptionalField[T] "
+                    f"type annotation and an explicit field assignment. "
+                    f"Remove the explicit field assignment when using mongo.OptionalField[T]."
+                )
+
         fields = {
             **{
                 name: value()
-                for name, value in inspect.get_annotations(cls, eval_str=True).items()
+                for name, value in annotations.items()
                 if isinstance(value, type) and issubclass(value, Field)
             },
             **{
                 name: origin_class(type_to_field(get_args(value)[0]))
                 if issubclass(origin_class, ListField)
                 else origin_class(*get_args(value))
-                for name, value in inspect.get_annotations(cls, eval_str=True).items()
+                for name, value in annotations.items()
                 if (origin_class := get_origin(value))
                 and isinstance(origin_class, type)
                 and issubclass(origin_class, Field)
@@ -188,7 +205,7 @@ class Document(metaclass=DocumentMetaClass):
 
     objects = Manager()
 
-    def __init__(self, **kwargs):
+    def __init__(self, *, _from_load_partial: bool = False, **kwargs):
         if self.__abstract__:
             raise RuntimeError(
                 "The class {} cannot be instantiated, because it's __abstract__ is True.".format(
@@ -201,6 +218,9 @@ class Document(metaclass=DocumentMetaClass):
                 value = kwargs.pop(name)
             else:
                 if field.default is None:
+                    continue
+                # Skip default application for Optional fields in partial mode
+                if _from_load_partial and getattr(field, "_skip_default_in_partial", False):
                     continue
                 default_value = field.default
                 if callable(default_value):
@@ -254,7 +274,7 @@ class Document(metaclass=DocumentMetaClass):
             key: getattr(cls.__fields__[key], "load")(value, partial=partial)
             for key, value in validated.items()
         }
-        return cls(**loaded)
+        return cls(_from_load_partial=partial, **loaded)
 
     def dump(self: Self) -> dict[str, Any]:
         """

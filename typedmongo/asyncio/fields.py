@@ -10,12 +10,15 @@ from typing import (
     Any,
     Callable,
     Generic,
-    Optional,
+    Literal,
     TypeVar,
     Union,
     get_args,
     get_origin,
     overload,
+)
+from typing import (
+    Optional as TypingOptional,
 )
 
 from bson import ObjectId
@@ -46,7 +49,7 @@ class Field(Generic[FieldType, MarshamallowFieldType], OrderByMixin, CompareMixi
     Field
     """
 
-    default: Optional[FieldType | Callable[[], FieldType]] = dataclasses.field(
+    default: TypingOptional[FieldType | Callable[[], FieldType]] = dataclasses.field(
         default=None, kw_only=True
     )
     field_name: str = dataclasses.field(init=False)
@@ -418,6 +421,149 @@ class UnionField(Field[FieldType, MarshamallowUnion]):
         return value
 
 
+@dataclasses.dataclass(eq=False)
+class OptionalField(Generic[FieldType], Field[FieldType | None, Any]):
+    """
+    Optional field that defaults to None and allows None values.
+
+    Usage:
+        class User(Document):
+            name: StringField  # Required
+            nickname: OptionalField[str]  # Optional, defaults to None
+            wallet: OptionalField[Wallet]  # Optional embedded document
+            tags: OptionalField[list[str]]  # Optional list
+
+    Behavior:
+        - Construction: user = User(name="Alice") -> nickname is None
+        - Load (non-partial): User.load({"name": "Bob"}) -> nickname is None
+        - Load (partial): User.load({"name": "Charlie"}, partial=True) -> nickname unset
+
+    Difference from allow_none=True:
+        - Regular fields with allow_none=True still require a value (or explicit default)
+        - OptionalField[T] fields automatically default to None in non-partial loads
+        - In partial loads, OptionalField[T] fields remain unset if missing
+    """
+
+    inner_type: type[FieldType]
+    inner_field: Field = dataclasses.field(init=False, repr=False)
+    # If True, skip applying default in partial mode
+    _skip_default_in_partial: bool = dataclasses.field(default=False, kw_only=True)
+
+    def __post_init__(self):
+        # Derive inner field from type
+        inner = type_to_field(self.inner_type)
+
+        # Configure inner field
+        inner.allow_none = True
+
+        # Store inner field (can't use assignment due to descriptor protocol)
+        setattr(self, "inner_field", inner)
+
+        # Use inner field's marshamallow, but mark as not required (we have a default)
+        self.marshamallow = inner.marshamallow
+        self.marshamallow.required = False
+        self.marshamallow.load_default = lambda: None
+        self.marshamallow.dump_default = lambda: None
+
+        # Set allow_none and default at wrapper level
+        self.allow_none = True
+        self.default = lambda: None
+        self._skip_default_in_partial = True
+
+    def __set_name__(self, owner: type[Document], name: str) -> None:
+        # Bind both wrapper and inner field
+        self._table = owner
+        self._name = name
+        self.field_name = name
+
+        # Also bind inner field - access via object.__getattribute__ to bypass descriptor
+        inner = object.__getattribute__(self, "inner_field")
+        inner.__set_name__(owner, name)
+
+    @property
+    def field_type(self) -> type[FieldType | None]:
+        inner = object.__getattribute__(self, "inner_field")
+        return inner.field_type | None  # type: ignore
+
+    def load(self, value: Any, *, partial: bool = False) -> FieldType | None:
+        if value is None:
+            return None
+        inner = object.__getattribute__(self, "inner_field")
+        return inner.load(value, partial=partial)
+
+    def dump(self, value: FieldType | None) -> Any:
+        if value is None:
+            return None
+        inner = object.__getattribute__(self, "inner_field")
+        return inner.dump(value)
+
+    def to_mongo(self, value: FieldType | None) -> Any:
+        if value is None:
+            return None
+        inner = object.__getattribute__(self, "inner_field")
+        return inner.to_mongo(value)
+
+    # Forward nested query proxies
+    def __getattr__(self, name: str) -> Any:
+        # Forward to inner field for nested query support
+        # Don't forward these internal attributes
+        if name in (
+            "field_name",
+            "inner_field",
+            "inner_type",
+            "_skip_default_in_partial",
+        ):
+            return object.__getattribute__(self, name)
+        # Forward everything else to inner field (including "_" for nested queries)
+        inner = object.__getattribute__(self, "inner_field")
+        if hasattr(inner, name):
+            return getattr(inner, name)
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
+
+    def __getitem__(self, index: int) -> Any:
+        # Forward list indexing to inner field (for OptionalField[list[T]])
+        inner = object.__getattribute__(self, "inner_field")
+        if hasattr(inner, "__getitem__"):
+            return inner[index]
+        raise TypeError(f"'{type(inner).__name__}' object is not subscriptable")
+
+    @classmethod
+    def __class_getitem__(cls, item: type) -> type["OptionalField"]:
+        """
+        Support OptionalField[T] syntax via PEP 560.
+
+        This method is called when you write OptionalField[str], OptionalField[int], etc.
+        """
+        # Validate that item is not a Field type
+        if isinstance(item, type) and issubclass(item, Field):
+            raise TypeError(
+                f"mongo.OptionalField[T] expects a Python value type, not a Field type. "
+                f"Use mongo.OptionalField[{item.__name__.replace('Field', '').lower()}] instead."
+            )
+
+        # Create a new class that inherits from OptionalField directly
+        # Note: We inherit from cls (which is OptionalField) directly, not cls[item]
+        class _ParameterizedOptional(cls):  # type: ignore
+            def __init__(self, **kwargs):
+                if kwargs:
+                    raise TypeError(
+                        f"mongo.OptionalField[{item}] cannot be instantiated with arguments. "
+                        f"It's automatically configured."
+                    )
+                super().__init__(inner_type=item)
+
+        _ParameterizedOptional.__name__ = (
+            f"OptionalField[{getattr(item, '__name__', str(item))}]"
+        )
+        _ParameterizedOptional.__qualname__ = (
+            f"OptionalField[{getattr(item, '__name__', str(item))}]"
+        )
+
+        return _ParameterizedOptional
+
+
 def type_to_field(type_: type) -> Field[Any, Any]:
     from .table import Document
 
@@ -442,6 +588,8 @@ def type_to_field(type_: type) -> Field[Any, Any]:
     if isinstance(type_, type) and issubclass(type_, Document):
         return EmbeddedField(type_)
     origin = get_origin(type_)
+    if origin is Literal:
+        return LiteralField(type_)
     if origin is list:
         return ListField(type_to_field(get_args(type_)[0]))
     if origin is Union or origin is UnionType:
