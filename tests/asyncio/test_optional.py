@@ -168,18 +168,10 @@ class TestOptionalDump:
     """Test Optional field dump behavior."""
 
     def test_dump_with_none_values(self):
-        """dump() should include None values for Optional fields."""
+        """dump() should omit None values for Optional fields."""
         user = User(name="Alice")
         dumped = user.dump()
-        assert dumped["name"] == "Alice"
-        assert dumped["nickname"] is None
-        assert dumped["age"] is None
-        assert dumped["bio"] is None
-        assert dumped["wallet"] is None
-        assert dumped["tags"] is None
-        assert dumped["gender"] is None
-        assert dumped["status"] is None
-        assert dumped["metadata"] is None
+        assert dumped == {"name": "Alice"}
 
     def test_dump_with_values(self):
         """dump() should correctly dump Optional fields with values."""
@@ -202,33 +194,21 @@ class TestOptionalDump:
         assert dumped["metadata"] == {"key": "value"}
 
     def test_dump_partial_object(self):
-        """dump() should include Optional fields defaulted to None."""
+        """dump() should omit Optional fields that are None."""
         data = {"name": "Alice", "nickname": "Ali"}
         user = User.load(data, partial=True)
         dumped = user.dump()
-        assert dumped == {
-            "name": "Alice",
-            "nickname": "Ali",
-            "age": None,
-            "bio": None,
-            "wallet": None,
-            "tags": None,
-            "gender": None,
-            "status": None,
-            "metadata": None,
-        }
+        assert dumped == {"name": "Alice", "nickname": "Ali"}
 
 
 class TestOptionalToMongo:
     """Test Optional field to_mongo behavior."""
 
     def test_to_mongo_with_none_values(self):
-        """to_mongo() should include None values."""
+        """to_mongo() should omit None Optional fields."""
         user = User(name="Alice")
         mongo_doc = user.to_mongo()
-        assert mongo_doc["name"] == "Alice"
-        assert mongo_doc["nickname"] is None
-        assert mongo_doc["age"] is None
+        assert mongo_doc == {"name": "Alice"}
 
     def test_to_mongo_with_values(self):
         """to_mongo() should correctly convert Optional fields."""

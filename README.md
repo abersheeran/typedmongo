@@ -164,6 +164,7 @@ Document.objects.collection.aggregate([
 Use `mongo.OptionalField[T]` to declare fields that:
 - Accept `None` values
 - Default to `None` when missing, in both partial and non-partial loads
+- Are omitted from `dump()` / `to_mongo()` when their value is `None`
 
 ```python
 class User(mongo.Document):

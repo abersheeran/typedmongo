@@ -437,6 +437,7 @@ class OptionalField(Generic[FieldType], Field[FieldType | None, Any]):
         - Construction: user = User(name="Alice") -> nickname is None
         - Load (non-partial): User.load({"name": "Bob"}) -> nickname is None
         - Load (partial): User.load({"name": "Charlie"}, partial=True) -> nickname is None
+        - Dump: dump() / to_mongo() omit OptionalField entries whose value is None
 
     Difference from allow_none=True:
         - Regular fields with allow_none=True still require a value (or explicit default)

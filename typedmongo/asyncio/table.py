@@ -22,7 +22,7 @@ from typedmongo.exceptions import DocumentDefineError
 from typedmongo.marshamallow import MarshamallowObjectId
 
 from .client import Manager
-from .fields import Field, ListField, ObjectIdField, type_to_field
+from .fields import Field, ListField, ObjectIdField, OptionalField, type_to_field
 
 if TYPE_CHECKING:
     from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler
@@ -138,7 +138,6 @@ class DocumentMetaClass(type):
         annotations = inspect.get_annotations(cls, eval_str=True)
 
         # Check for conflicts: OptionalField annotation with explicit field assignment
-        from .fields import OptionalField
         for name in annotations:
             ann_value = annotations[name]
             # Check if annotation is an OptionalField (including parameterized versions)
@@ -276,12 +275,15 @@ class Document(metaclass=DocumentMetaClass):
     def dump(self: Self) -> dict[str, Any]:
         """
         Dump the instance to jsonable dict.
+
+        OptionalField entries whose value is None are omitted.
         """
         return {
             key: getattr(self.__fields__[key], "dump")(value)
             if value is not None
             else None
             for key, value in self.__dict__.items()
+            if value is not None or not isinstance(self.__fields__[key], OptionalField)
         }
 
     @classmethod
@@ -291,10 +293,13 @@ class Document(metaclass=DocumentMetaClass):
     def to_mongo(self) -> dict[str, Any]:
         """
         Dump the instance to dict for mongo.
+
+        OptionalField entries whose value is None are omitted.
         """
         return {
             key: getattr(self.__fields__[key], "to_mongo")(value)
             for key, value in self.__dict__.items()
+            if value is not None or not isinstance(self.__fields__[key], OptionalField)
         }
 
     @classmethod
