@@ -205,7 +205,7 @@ class Document(metaclass=DocumentMetaClass):
 
     objects = Manager()
 
-    def __init__(self, *, _from_load_partial: bool = False, **kwargs):
+    def __init__(self, **kwargs):
         if self.__abstract__:
             raise RuntimeError(
                 "The class {} cannot be instantiated, because it's __abstract__ is True.".format(
@@ -218,9 +218,6 @@ class Document(metaclass=DocumentMetaClass):
                 value = kwargs.pop(name)
             else:
                 if field.default is None:
-                    continue
-                # Skip default application for Optional fields in partial mode
-                if _from_load_partial and getattr(field, "_skip_default_in_partial", False):
                     continue
                 default_value = field.default
                 if callable(default_value):
@@ -274,7 +271,7 @@ class Document(metaclass=DocumentMetaClass):
             key: getattr(cls.__fields__[key], "load")(value, partial=partial)
             for key, value in validated.items()
         }
-        return cls(_from_load_partial=partial, **loaded)
+        return cls(**loaded)
 
     def dump(self: Self) -> dict[str, Any]:
         """

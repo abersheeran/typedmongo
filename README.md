@@ -163,8 +163,7 @@ Document.objects.collection.aggregate([
 
 Use `mongo.OptionalField[T]` to declare fields that:
 - Accept `None` values
-- Default to `None` in non-partial loads
-- Remain unset in partial loads
+- Default to `None` when missing, in both partial and non-partial loads
 
 ```python
 class User(mongo.Document):
@@ -185,13 +184,13 @@ assert user.nickname is None
 
 # Load without optional fields (partial)
 user = User.load({"name": "Charlie"}, partial=True)
-assert not hasattr(user, "nickname")  # Unset
+assert user.nickname is None
 ```
 
 **Difference from `allow_none=True`:**
 - Regular fields with `allow_none=True` still require a value (or explicit default)
-- `OptionalField[T]` fields automatically default to `None` in non-partial loads
-- In partial loads, `OptionalField[T]` fields remain unset if missing
+- `OptionalField[T]` fields automatically default to `None` if missing,
+  in both partial and non-partial loads
 
 ### Conditional expressions
 

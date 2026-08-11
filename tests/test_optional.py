@@ -129,19 +129,19 @@ class TestOptionalLoad:
         assert user.age is None
 
     def test_load_partial_without_optional_fields(self):
-        """load(partial=True) should NOT default missing Optional fields."""
+        """load(partial=True) should default missing Optional fields to None."""
         data = {"name": "Alice"}
         user = User.load(data, partial=True)
         assert user.name == "Alice"
-        # Optional fields should NOT be set in partial mode
-        assert not hasattr(user, "nickname")
-        assert not hasattr(user, "age")
-        assert not hasattr(user, "bio")
-        assert not hasattr(user, "wallet")
-        assert not hasattr(user, "tags")
-        assert not hasattr(user, "gender")
-        assert not hasattr(user, "status")
-        assert not hasattr(user, "metadata")
+        # Optional fields should be set to None in partial mode
+        assert user.nickname is None
+        assert user.age is None
+        assert user.bio is None
+        assert user.wallet is None
+        assert user.tags is None
+        assert user.gender is None
+        assert user.status is None
+        assert user.metadata is None
 
     def test_load_partial_with_optional_fields(self):
         """load(partial=True) with Optional fields should load them."""
@@ -150,9 +150,9 @@ class TestOptionalLoad:
         assert user.name == "Bob"
         assert user.nickname == "Bobby"
         assert user.age == 25
-        # Other Optional fields should NOT be set
-        assert not hasattr(user, "bio")
-        assert not hasattr(user, "wallet")
+        # Other Optional fields should default to None
+        assert user.bio is None
+        assert user.wallet is None
 
     def test_load_partial_with_explicit_none(self):
         """load(partial=True) should handle explicit None values."""
@@ -202,11 +202,21 @@ class TestOptionalDump:
         assert dumped["metadata"] == {"key": "value"}
 
     def test_dump_partial_object(self):
-        """dump() should only include set attributes."""
+        """dump() should include Optional fields defaulted to None."""
         data = {"name": "Alice", "nickname": "Ali"}
         user = User.load(data, partial=True)
         dumped = user.dump()
-        assert dumped == {"name": "Alice", "nickname": "Ali"}
+        assert dumped == {
+            "name": "Alice",
+            "nickname": "Ali",
+            "age": None,
+            "bio": None,
+            "wallet": None,
+            "tags": None,
+            "gender": None,
+            "status": None,
+            "metadata": None,
+        }
 
 
 class TestOptionalToMongo:
@@ -374,14 +384,14 @@ class TestOptionalRepr:
         assert "age=25" in repr_str
 
     def test_repr_partial(self):
-        """repr should only show set fields in partial objects."""
+        """repr should show missing Optional fields as None in partial objects."""
         data = {"name": "Charlie", "age": 30}
         user = User.load(data, partial=True)
         repr_str = repr(user)
         assert "name='Charlie'" in repr_str
         assert "age=30" in repr_str
-        # Unset Optional fields should not appear
-        assert "nickname" not in repr_str
+        # Missing Optional fields default to None
+        assert "nickname=None" in repr_str
 
 
 class TestOptionalEquality:

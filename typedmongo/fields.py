@@ -436,18 +436,16 @@ class OptionalField(Generic[FieldType], Field[FieldType | None, Any]):
     Behavior:
         - Construction: user = User(name="Alice") -> nickname is None
         - Load (non-partial): User.load({"name": "Bob"}) -> nickname is None
-        - Load (partial): User.load({"name": "Charlie"}, partial=True) -> nickname unset
+        - Load (partial): User.load({"name": "Charlie"}, partial=True) -> nickname is None
 
     Difference from allow_none=True:
         - Regular fields with allow_none=True still require a value (or explicit default)
-        - OptionalField[T] fields automatically default to None in non-partial loads
-        - In partial loads, OptionalField[T] fields remain unset if missing
+        - OptionalField[T] fields automatically default to None if missing,
+          in both partial and non-partial loads
     """
 
     inner_type: type[FieldType]
     inner_field: Field = dataclasses.field(init=False, repr=False)
-    # If True, skip applying default in partial mode
-    _skip_default_in_partial: bool = dataclasses.field(default=False, kw_only=True)
 
     def __post_init__(self):
         # Derive inner field from type
@@ -468,7 +466,6 @@ class OptionalField(Generic[FieldType], Field[FieldType | None, Any]):
         # Set allow_none and default at wrapper level
         self.allow_none = True
         self.default = lambda: None
-        self._skip_default_in_partial = True
 
     def __set_name__(self, owner: type[Document], name: str) -> None:
         # Bind both wrapper and inner field
@@ -511,7 +508,6 @@ class OptionalField(Generic[FieldType], Field[FieldType | None, Any]):
             "field_name",
             "inner_field",
             "inner_type",
-            "_skip_default_in_partial",
         ):
             return object.__getattribute__(self, name)
         # Forward everything else to inner field (including "_" for nested queries)
